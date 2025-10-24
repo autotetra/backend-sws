@@ -48,7 +48,7 @@ export const login = async (req: Request, res: Response) => {
 export const register = async (req: Request, res: Response) => {
   try {
     // Extract user details from the request body
-    const { firstName, lastName, email, password, role } = req.body;
+    const { firstName, lastName, email, password } = req.body;
 
     // Check if the email is already registered
     const existingUser = await User.findOne({ email });
@@ -62,7 +62,6 @@ export const register = async (req: Request, res: Response) => {
       lastName,
       email,
       password, // will be hashed automatically via pre-save middleware
-      role,
     });
 
     // Save the new user to the database
