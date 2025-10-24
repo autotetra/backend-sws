@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// Basic email regex (commonly used and safe for most apps)
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const registerSchema = z.object({
   firstName: z
     .string()
@@ -11,7 +14,9 @@ export const registerSchema = z.object({
     .min(2, { message: "Last name must be at least 2 characters" })
     .max(30, { message: "Last name must be at most 30 characters" }),
 
-  email: z.email({ message: "Invalid email address" }),
+  email: z.string().refine((val) => emailRegex.test(val), {
+    message: "Invalid email address",
+  }),
 
   password: z
     .string()
@@ -20,7 +25,9 @@ export const registerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.email({ message: "Invalid email address" }),
+  email: z.string().refine((val) => emailRegex.test(val), {
+    message: "Invalid email address",
+  }),
   password: z
     .string()
     .min(5, { message: "Password must be at least 5 characters" }),
