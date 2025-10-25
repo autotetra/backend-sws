@@ -1,9 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { ZodSchema } from "zod";
+import { ZodType } from "zod"; // ✅ Recommended
 
-// Reusable middleware for body validation
-const validateResource =
-  (schema: ZodSchema<any>) =>
+const validateBody =
+  (schema: ZodType<any>) =>
   (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.body);
 
@@ -12,7 +11,7 @@ const validateResource =
       return res.status(400).json({ message: "Validation error", errors });
     }
 
-    next(); // continue if validation passed
+    next();
   };
 
-export default validateResource;
+export default validateBody;
