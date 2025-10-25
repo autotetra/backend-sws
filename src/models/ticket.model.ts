@@ -9,7 +9,26 @@ const ticketSchema = new mongoose.Schema(
       enum: ["open", "in_progress", "closed"],
       default: "open",
     },
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    category: {
+      type: String,
+      enum: ["billing", "technical", "general"],
+      required: true,
+    },
+    priority: {
+      type: String,
+      enum: ["low", "medium", "high"],
+      default: "medium",
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    assignee: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   { timestamps: true }
 );

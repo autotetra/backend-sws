@@ -10,7 +10,7 @@ export interface IUser extends Document {
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
-const UserSchema = new Schema<IUser>(
+const userSchema = new Schema<IUser>(
   {
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
@@ -26,7 +26,7 @@ const UserSchema = new Schema<IUser>(
 );
 
 // Hash password before saving
-UserSchema.pre<IUser>("save", async function (next) {
+userSchema.pre<IUser>("save", async function (next) {
   if (!this.isModified("password")) return next(); // Skip if no changes
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
@@ -34,11 +34,11 @@ UserSchema.pre<IUser>("save", async function (next) {
 });
 
 // Method to compare passwords
-UserSchema.methods.comparePassword = async function (
+userSchema.methods.comparePassword = async function (
   candidatePassword: string
 ): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-export const User = mongoose.model("User", UserSchema);
+export const User = mongoose.model("User", userSchema);
 export default User;

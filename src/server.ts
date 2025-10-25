@@ -4,6 +4,7 @@ import { connectDB } from "./config/db";
 import authRoutes from "./routes/authRoutes";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import ticketRoutes from "./routes/ticketRoute";
 
 // Load environment variables
 dotenv.config();
@@ -28,6 +29,7 @@ connectDB();
 
 // Use routes
 app.use("/api/auth", authRoutes);
+app.use("/api/tickets", ticketRoutes);
 
 // Start the server
 const PORT = process.env.PORT || 5000;
