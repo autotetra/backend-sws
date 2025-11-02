@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { Document, Types } from "mongoose";
 
 const ticketSchema = new mongoose.Schema(
   {
@@ -30,7 +31,20 @@ const ticketSchema = new mongoose.Schema(
       default: null,
     },
   },
+
   { timestamps: true }
 );
 
-export const Ticket = mongoose.model("Ticket", ticketSchema);
+export interface TicketDocument extends Document {
+  title: string;
+  description?: string;
+  status: "open" | "in_progress" | "closed";
+  category: "billing" | "technical" | "general";
+  priority: "low" | "medium" | "high";
+  createdBy: Types.ObjectId;
+  assignee?: Types.ObjectId | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const Ticket = mongoose.model<TicketDocument>("Ticket", ticketSchema);

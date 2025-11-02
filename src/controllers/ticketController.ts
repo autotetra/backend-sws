@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { CustomRequest } from "../../types/express/custom";
 import { Ticket } from "../models/ticket.model";
+import { canManageTicket } from "../utils/ticketPermissions";
 
 // @desc Create a new ticket
 // @route POST /api/tickets
@@ -60,23 +61,95 @@ export const getTicketById = async (req: CustomRequest, res: Response) => {
       return res.status(404).json({ message: "Ticket not found." });
     }
 
-    const user = req.user; // comes from requireAuth middleware
+    const { canModify } = canManageTicket(req, ticket);
 
-    // RBAC Check: only allow:
-    // - ticket creator
-    // - ticket assignee (internal)
-    // - or admin
-    const isOwner = ticket.createdBy._id.equals(user._id);
-    const isAssignee = ticket.assignee?.toString() === user._id.toString();
-    const isAdmin = user.role === "admin";
-
-    if (!isOwner && !isAssignee && !isAdmin) {
+    if (!canModify) {
       return res.status(403).json({ message: "Access denied." });
     }
 
     res.status(200).json(ticket);
   } catch (err) {
     console.error("Error fetching ticket:", err);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const updateTicket = async (req: CustomRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    const ticket = await Ticket.findById(id);
+
+    if (!ticket) {
+      return res.status(404).json({ message: "Ticket not found." });
+    }
+
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized." });
+    }
+
+    const { canModify } = canManageTicket(user, ticket);
+
+    if (!canModify) {
+      return res
+        .status(403)
+        .json({ message: "You are not allowed to update this ticket." });
+    }
+
+    // 🛑 Internal users can only assign to themselves
+    if (
+      user.role === "internal" &&
+      updates.assignee &&
+      updates.assignee !== user._id.toString()
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Internal users can only assign themselves." });
+    }
+
+    // 🛑 Normal users can never assign tickets
+    if (user.role === "user" && updates.assignee) {
+      return res
+        .status(403)
+        .json({ message: "Users are not allowed to assign tickets." });
+    }
+
+    Object.assign(ticket, updates);
+    await ticket.save();
+
+    const populatedTicket = await Ticket.findById(ticket._id)
+      .populate("createdBy", "firstName lastName email role")
+      .populate("assignee", "firstName lastName email role");
+
+    res.status(200).json(populatedTicket);
+  } catch (err) {
+    console.error("Error updating ticket:", err);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const deleteTicket = async (req: CustomRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const ticket = await Ticket.findById(id);
+
+    if (!ticket) {
+      return res.status(404).json({ message: "Ticket not found." });
+    }
+
+    const { canModify } = canManageTicket(req, ticket);
+
+    if (!canModify) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this ticket." });
+    }
+
+    await Ticket.findByIdAndDelete(id);
+    res.status(200).json({ message: "Ticket deleted successfully." });
+  } catch (err) {
+    console.error("Error deleting ticket:", err);
     res.status(500).json({ message: "Internal server error." });
   }
 };
