@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { CustomRequest } from "../../types/express/custom";
-import { TicketDocument } from "../models/ticket.model";
+import { TicketDocument } from "../models/ticketModel";
 
 export function canManageTicket(req: CustomRequest, ticket: TicketDocument) {
   const user = req.user;

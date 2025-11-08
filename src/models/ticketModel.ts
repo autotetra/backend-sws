@@ -36,6 +36,7 @@ const ticketSchema = new mongoose.Schema(
 );
 
 export interface TicketDocument extends Document {
+  _id: Types.ObjectId;
   title: string;
   description?: string;
   status: "open" | "in_progress" | "closed";

@@ -2,17 +2,19 @@ import dotenv from "dotenv";
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
-import jwt from "jsonwebtoken";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
 import { connectDB } from "./config/db";
 import authRoutes from "./routes/authRoutes";
 import ticketRoutes from "./routes/ticketRoute";
-import { UserDocument } from "./models/user.model";
 
 // Load environment variables
 dotenv.config();
+
+if (!process.env.CLIENT_ORIGIN) {
+  throw new Error("❌ CLIENT_ORIGIN is not defined in .env");
+}
 
 // Initialize Express app & HTTP server
 const app = express();
@@ -30,38 +32,48 @@ const io = new Server(server, {
 // Handle WebSocket connections
 io.on("connection", (socket) => {
   const user = (socket as any).user;
-  console.log(`✅ WebSocket connected: ${user.email}`);
 
-  // Join user to their own room + role-based room if needed
-  socket.join(user._id.toString());
-  if (user.role === "admin" || user.role === "internal") {
-    socket.join("staff");
+  console.log(`✅ WebSocket connected: ${user?.email || "Unknown user"}`);
+
+  // Join user to their own room
+  if (user?._id) {
+    socket.join(user._id.toString());
+
+    // Join role-based room (for internal/admin)
+    if (user.role === "admin" || user.role === "internal") {
+      socket.join("staff");
+    }
   }
 
   socket.on("disconnect", () => {
-    console.log(`❌ WebSocket disconnected: $(user.email)`);
+    console.log(`❌ WebSocket disconnected: ${user?.email || "Unknown user"}`);
   });
 });
 
 // Middleware
 app.use(cookieParser());
-app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }));
+app.use(
+  cors({
+    origin: process.env.CLIENT_ORIGIN,
+    credentials: true,
+  })
+);
 app.use(express.json());
 
-// Connect to DB
+// Connect to MongoDB
 connectDB();
 
 // Use routes
 app.use("/api/auth", authRoutes);
 app.use("/api/tickets", ticketRoutes);
 
-// Test Route
-app.get("/test", (req, res) => {
+// Test route
+app.get("/test", (_req, res) => {
   res.send("Server is running ✅");
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5050;
 server.listen(PORT, () => {
   console.log(`🚀 Server + WebSocket running on port ${PORT}`);
 });

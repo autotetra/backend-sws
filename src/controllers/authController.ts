@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import User, { IUser } from "../models/user.model";
+import User, { IUser } from "../models/userModel";
 import jwt from "jsonwebtoken";
 
 export const login = async (req: Request, res: Response) => {
@@ -11,9 +11,6 @@ export const login = async (req: Request, res: Response) => {
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-
-
-
 
     // 2. Compare provided password with hashed password
     const isMatch = await user.comparePassword(password);

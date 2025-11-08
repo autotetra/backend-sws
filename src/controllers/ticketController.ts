@@ -1,7 +1,9 @@
 import { Response } from "express";
 import { CustomRequest } from "../../types/express/custom";
-import { Ticket } from "../models/ticket.model";
+import { Ticket } from "../models/ticketModel";
 import { canManageTicket } from "../utils/ticketPermissions";
+import { emitTicketUpdate, emitTicketDelete } from "../socket/ticketSocket";
+import { io } from "../server";
 
 // @desc Create a new ticket
 // @route POST /api/tickets
@@ -20,6 +22,9 @@ export const createTicket = async (req: CustomRequest, res: Response) => {
       createdBy,
       assignee: null,
     });
+
+    // Emit ticket creation event via WebSocket
+    emitTicketUpdate(ticket);
 
     res.status(201).json({ message: "Ticket created succesfully", ticket });
   } catch (err) {
@@ -122,6 +127,11 @@ export const updateTicket = async (req: CustomRequest, res: Response) => {
       .populate("createdBy", "firstName lastName email role")
       .populate("assignee", "firstName lastName email role");
 
+    // Emit ticket update event via WebSocket
+    if (populatedTicket) {
+      emitTicketUpdate(populatedTicket);
+    }
+
     res.status(200).json(populatedTicket);
   } catch (err) {
     console.error("Error updating ticket:", err);
@@ -147,6 +157,10 @@ export const deleteTicket = async (req: CustomRequest, res: Response) => {
     }
 
     await Ticket.findByIdAndDelete(id);
+
+    // Emit ticket deletion event via WebSocket
+    emitTicketDelete(ticket);
+
     res.status(200).json({ message: "Ticket deleted successfully." });
   } catch (err) {
     console.error("Error deleting ticket:", err);
