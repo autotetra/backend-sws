@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import api from "../api";
 
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (role: string, name: string) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
@@ -15,8 +15,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError("");
 
     try {
-      await api.post("/auth/login", { email, password });
-      onLogin();
+      const res = await api.post<{ role: string; name: string }>(
+        "/auth/login",
+        { email, password }
+      );
+
+      onLogin(res.data.role, res.data.name);
     } catch (err: any) {
       console.error(err);
       setError("Invalid credentials. Please try again.");
@@ -33,14 +37,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
+
         <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+
         <button type="submit">Login</button>
       </form>
+
       {error && <p style={{ color: "red" }}>{error}</p>}
     </div>
   );
