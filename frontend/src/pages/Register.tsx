@@ -39,26 +39,26 @@ const Register: React.FC<{ onBackToLogin: () => void }> = ({
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
         />
-
+        <br />
         <input
           placeholder="Last Name"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
         />
-
+        <br />
         <input
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-
+        <br />
         <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-
+        <br />
         <button type="submit">Register</button>
       </form>
 
