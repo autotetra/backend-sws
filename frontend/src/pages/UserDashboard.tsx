@@ -53,6 +53,21 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
       console.error("Failed to load tickets:", err);
     }
   };
+  const deleteTicket = async (id: string) => {
+    try {
+      await api.delete(`/tickets/${id}`);
+
+      // Immediately update UI
+      setMyTickets((prev) => prev.filter((t) => t._id !== id));
+
+      // Close panel if this ticket was open
+      if (selectedTicket?._id === id) {
+        setSelectedTicket(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete ticket:", err);
+    }
+  };
 
   useEffect(() => {
     fetchTickets();
@@ -133,6 +148,13 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
             <strong>Created:</strong>{" "}
             {new Date(selectedTicket.createdAt).toLocaleString()}
           </p>
+
+          <button
+            onClick={() => deleteTicket(selectedTicket._id)}
+            style={{ marginRight: "10px", color: "red" }}
+          >
+            Delete Ticket
+          </button>
 
           <button onClick={() => setSelectedTicket(null)}>Close</button>
         </div>
