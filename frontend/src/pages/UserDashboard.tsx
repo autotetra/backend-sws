@@ -1,5 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import api from "../api";
+
+type Ticket = {
+  _id: string;
+  title: string;
+  description?: string;
+  category: "billing" | "technical" | "general";
+  status: string;
+  priority: string;
+  createdBy: string;
+  assignee?: string | null;
+  createdAt: string;
+};
 
 const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
   const [title, setTitle] = useState("");
@@ -7,25 +19,44 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
   const [category, setCategory] = useState("");
   const [message, setMessage] = useState("");
 
+  const [myTickets, setMyTickets] = useState<Ticket[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
 
     try {
-      const res = await api.post("/tickets", {
+      await api.post("/tickets", {
         title,
         description,
         category,
       });
+
       setMessage("Ticket created successfully!");
       setTitle("");
       setDescription("");
       setCategory("");
+
+      fetchTickets();
     } catch (err: any) {
       console.error(err);
       setMessage("Failed to create ticket.");
     }
   };
+
+  const fetchTickets = async () => {
+    try {
+      const res = await api.get<Ticket[]>("/tickets");
+      setMyTickets(res.data);
+    } catch (err) {
+      console.error("Failed to load tickets:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchTickets();
+  }, []);
 
   return (
     <div>
@@ -62,6 +93,50 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
       </form>
 
       {message && <p>{message}</p>}
+
+      <h3>My Tickets</h3>
+
+      {myTickets.length === 0 ? (
+        <p>No tickets yet.</p>
+      ) : (
+        <ul>
+          {myTickets.map((t) => (
+            <li
+              key={t._id}
+              style={{ cursor: "pointer" }}
+              onClick={() => setSelectedTicket(t)}
+            >
+              {t.title}
+            </li>
+          ))}
+        </ul>
+      )}
+      {selectedTicket && (
+        <div style={{ marginTop: "20px" }}>
+          <h3>Ticket Details</h3>
+          <p>
+            <strong>Title:</strong> {selectedTicket.title}
+          </p>
+          <p>
+            <strong>Description:</strong> {selectedTicket.description}
+          </p>
+          <p>
+            <strong>Category:</strong> {selectedTicket.category}
+          </p>
+          <p>
+            <strong>Status:</strong> {selectedTicket.status}
+          </p>
+          <p>
+            <strong>Priority:</strong> {selectedTicket.priority}
+          </p>
+          <p>
+            <strong>Created:</strong>{" "}
+            {new Date(selectedTicket.createdAt).toLocaleString()}
+          </p>
+
+          <button onClick={() => setSelectedTicket(null)}>Close</button>
+        </div>
+      )}
     </div>
   );
 };

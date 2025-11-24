@@ -49,7 +49,7 @@ export const getTickets = async (req: CustomRequest, res: Response) => {
       .populate("assignee", "firstName lastName email role")
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ tickets });
+    res.status(200).json(tickets);
   } catch (err) {
     console.error("Get tickets errpr:", err);
     res.status(500).json({ message: 'Server error."});' });
