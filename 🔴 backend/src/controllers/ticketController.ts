@@ -1,32 +1,61 @@
 import { Response } from "express";
 import { CustomRequest } from "../../types/express/custom";
 import { Ticket } from "../models/ticketModel";
+import { User, IUser } from "../models/userModel";
 import { canManageTicket } from "../utils/ticketPermissions";
 import { emitTicketUpdate, emitTicketDelete } from "../socket/ticketSocket";
 import { io } from "../server";
 
-// @desc Create a new ticket
-// @route POST /api/tickets
-// @access Private (user only)
-
 export const createTicket = async (req: CustomRequest, res: Response) => {
   try {
     const { title, description, category } = req.body;
-
     const createdBy = req.user?.id;
 
+    // 1. Get internal users (NOT LEAN — we want real Mongoose docs)
+    const internalMembers: IUser[] = await User.find({
+      role: "internal",
+      departments: category,
+    });
+
+    let assignee: string | null = null;
+
+    if (internalMembers.length > 0) {
+      // 2. Count open tickets for each internal member
+      const membersWithCounts = await Promise.all(
+        internalMembers.map(async (member) => {
+          const openCount = await Ticket.countDocuments({
+            assignee: member._id,
+            status: "open",
+          });
+
+          return { member, openCount };
+        })
+      );
+
+      // 3. Pick the member with the fewest open tickets
+      membersWithCounts.sort((a, b) => a.openCount - b.openCount);
+
+      // 4. Assign
+      assignee = membersWithCounts[0].member._id.toString();
+    }
+
+    // 5. Create ticket
     const ticket = await Ticket.create({
       title,
       description,
       category,
       createdBy,
-      assignee: null,
+      assignee,
     });
 
-    // Emit ticket creation event via WebSocket
+    console.log("New ticket created:", ticket);
+
     emitTicketUpdate(ticket);
 
-    res.status(201).json({ message: "Ticket created succesfully", ticket });
+    res.status(201).json({
+      message: "Ticket created successfully",
+      ticket,
+    });
   } catch (err) {
     console.error("Create ticket error:", err);
     res.status(500).json({ message: "Server error." });

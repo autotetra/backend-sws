@@ -2,11 +2,13 @@ import mongoose, { Document, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
 
 export interface IUser extends Document {
+  _id: string;
   firstName: string;
   lastName: string;
   email: string;
   password: string;
   role: "user" | "internal" | "admin";
+  departments?: string[];
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -21,6 +23,7 @@ const userSchema = new Schema<IUser>(
       enum: ["user", "internal", "admin"],
       default: "user",
     },
+    departments: { type: [String], default: [] },
   },
   { timestamps: true }
 );
