@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import { connectDB } from "./config/db";
 import authRoutes from "./routes/authRoutes";
 import ticketRoutes from "./routes/ticketRoute";
+import { socketAuth } from "./middleware/socketAuth";
 
 // Load environment variables
 dotenv.config();
@@ -28,6 +29,9 @@ const io = new Server(server, {
     credentials: true,
   },
 });
+
+// 🔥 WebSocket auth middleware
+io.use(socketAuth);
 
 // Handle WebSocket connections
 io.on("connection", (socket) => {
