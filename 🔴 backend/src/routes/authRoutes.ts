@@ -18,14 +18,9 @@ router.get("/adminOnly", requireAuth, requireRole("admin"), (req, res) => {
   res.status(200).json({ message: "Hello Admin" });
 });
 
-router.get(
-  "/internalOnly",
-  requireAuth,
-  requireRole("internal"),
-  (req, res) => {
-    res.status(200).json({ message: "Hello Internal User" });
-  }
-);
+router.get("/agentOnly", requireAuth, requireRole("agent"), (req, res) => {
+  res.status(200).json({ message: "Hello Agent" });
+});
 
 router.get("/userOnly", requireAuth, requireRole("user"), (req, res) => {
   res.status(200).json({ message: "Hello User" });

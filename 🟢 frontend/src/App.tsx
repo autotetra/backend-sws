@@ -2,7 +2,7 @@ import { useState } from "react";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import UserDashboard from "./pages/UserDashboard";
-import InternalDashboard from "./pages/InternalDashboard";
+import AgentDashboard from "./pages/AgentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
@@ -24,7 +24,7 @@ function App() {
       {loggedIn ? (
         <>
           {userRole === "user" && <UserDashboard name={userName} />}
-          {userRole === "internal" && <InternalDashboard name={userName} />}
+          {userRole === "agent" && <AgentDashboard name={userName} />}
           {userRole === "admin" && <AdminDashboard name={userName} />}
 
           <button onClick={() => setLoggedIn(false)}>Logout</button>

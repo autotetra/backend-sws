@@ -11,18 +11,18 @@ export const createTicket = async (req: CustomRequest, res: Response) => {
     const { title, description, category } = req.body;
     const createdBy = req.user?.id;
 
-    // 1. Get internal users (NOT LEAN — we want real Mongoose docs)
-    const internalMembers: IUser[] = await User.find({
-      role: "internal",
+    // 1. Get Agents (NOT LEAN — we want real Mongoose docs)
+    const agentMembers: IUser[] = await User.find({
+      role: "agent",
       departments: category,
     });
 
     let assignee: string | null = null;
 
-    if (internalMembers.length > 0) {
+    if (agentMembers.length > 0) {
       // 2. Count open tickets for each internal member
       const membersWithCounts = await Promise.all(
-        internalMembers.map(async (member) => {
+        agentMembers.map(async (member) => {
           const openCount = await Ticket.countDocuments({
             assignee: member._id,
             status: "open",
@@ -122,8 +122,8 @@ export const updateTicket = async (req: CustomRequest, res: Response) => {
     if (!user) {
       return res.status(401).json({ message: "Unauthorized." });
     }
-
-    const { canModify } = canManageTicket(user, ticket);
+    // console.log(user, ticket);
+    const { canModify } = canManageTicket(req, ticket);
 
     if (!canModify) {
       return res
@@ -131,15 +131,15 @@ export const updateTicket = async (req: CustomRequest, res: Response) => {
         .json({ message: "You are not allowed to update this ticket." });
     }
 
-    // 🛑 Internal users can only assign to themselves
+    // 🛑 Agents can only assign to themselves
     if (
-      user.role === "internal" &&
+      user.role === "agent" &&
       updates.assignee &&
       updates.assignee !== user._id.toString()
     ) {
       return res
         .status(403)
-        .json({ message: "Internal users can only assign themselves." });
+        .json({ message: "Agent users can only assign themselves." });
     }
 
     // 🛑 Normal users can never assign tickets
