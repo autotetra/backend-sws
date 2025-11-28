@@ -197,4 +197,43 @@ export const deleteTicket = async (req: CustomRequest, res: Response) => {
   }
 };
 
+export const addCommentToTicket = async (req: CustomRequest, res: Response) => {
+  try {
+    const ticketId = req.params.id;
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized." });
+    }
+
+    const { body } = req.body;
+    if (!body || body.trim() === "") {
+      return res.status(400).json({ message: "Comment body ias required." });
+    }
+
+    const ticket = await Ticket.findById(ticketId);
+    if (!ticket) {
+      return res.status(404).json({ message: "Ticket not found." });
+    }
+
+    // Add comment
+    ticket.comments.push({
+      author: user._id,
+      body,
+    } as any);
+
+    await ticket.save();
+
+    const updated = await Ticket.findById(ticketId)
+      .populate("createdBy", "firstName lastName email role")
+      .populate("assignee", "firstName lastName email role")
+      .populate("comments.authro", "firstName lastName email role");
+
+    return res.status(200).json(updated);
+  } catch (err) {
+    console.error("Add comment error:", err);
+    res.status(500).json({ message: "Internal server error." });
+  }
+};
+
 export default createTicket;

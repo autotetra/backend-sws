@@ -5,6 +5,7 @@ import {
   getTicketById,
   updateTicket,
   deleteTicket,
+  addCommentToTicket,
 } from "../controllers/ticketController";
 import validateBody from "../middleware/validateBody";
 import { createTicketSchema } from "../validators/ticketValidation";
@@ -21,5 +22,7 @@ router.get("/:id", requireAuth, getTicketById);
 router.patch("/:id", requireAuth, updateTicket);
 
 router.delete("/:id", requireAuth, deleteTicket);
+
+router.post("/:id/comments", requireAuth, addCommentToTicket);
 
 export default router;

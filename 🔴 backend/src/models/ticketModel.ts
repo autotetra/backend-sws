@@ -1,6 +1,21 @@
 import mongoose from "mongoose";
 import { Document, Types } from "mongoose";
 
+const commentSchema = new mongoose.Schema(
+  {
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    body: {
+      type: String,
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
+
 const ticketSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
@@ -30,6 +45,7 @@ const ticketSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    comments: [commentSchema],
   },
 
   { timestamps: true }
@@ -44,6 +60,13 @@ export interface TicketDocument extends Document {
   priority: "low" | "medium" | "high";
   createdBy: Types.ObjectId;
   assignee?: Types.ObjectId | null;
+  comments: {
+    _id: Types.ObjectId;
+    author: Types.ObjectId;
+    body: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
