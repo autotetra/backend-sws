@@ -208,7 +208,7 @@ export const addCommentToTicket = async (req: CustomRequest, res: Response) => {
 
     const { body } = req.body;
     if (!body || body.trim() === "") {
-      return res.status(400).json({ message: "Comment body ias required." });
+      return res.status(400).json({ message: "Comment body is required." });
     }
 
     const ticket = await Ticket.findById(ticketId);
@@ -227,7 +227,7 @@ export const addCommentToTicket = async (req: CustomRequest, res: Response) => {
     const updated = await Ticket.findById(ticketId)
       .populate("createdBy", "firstName lastName email role")
       .populate("assignee", "firstName lastName email role")
-      .populate("comments.authro", "firstName lastName email role");
+      .populate("comments.author", "firstName lastName email role");
 
     return res.status(200).json(updated);
   } catch (err) {

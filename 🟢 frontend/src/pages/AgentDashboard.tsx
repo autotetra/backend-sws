@@ -80,13 +80,21 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
     if (!selectedTicket) return;
 
     try {
-      await api.patch(`/tickets/${selectedTicket._id}`, {
+      const res = await api.patch(`/tickets/${selectedTicket._id}`, {
         priority: editPriority,
         status: editStatus,
       });
 
+      // 1. Update tickets array
+      setTickets((prev: Ticket[]) =>
+        prev.map((t: Ticket) =>
+          t._id === (res.data as Ticket)._id ? (res.data as Ticket) : t
+        )
+      );
+
+      // 2. Update selected ticket
       setSelectedTicket(null);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to update ticket:", err);
       alert("Failed to update ticket");
     }
