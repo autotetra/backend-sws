@@ -9,6 +9,7 @@ import { connectDB } from "./config/db";
 import authRoutes from "./routes/authRoutes";
 import ticketRoutes from "./routes/ticketRoute";
 import { socketAuth } from "./middleware/socketAuth";
+import adminUserRoutes from "./routes/adminAuthRoutes";
 
 // Load environment variables
 dotenv.config();
@@ -70,6 +71,7 @@ connectDB();
 // Use routes
 app.use("/api/auth", authRoutes);
 app.use("/api/tickets", ticketRoutes);
+app.use("/api/admin", adminUserRoutes);
 
 // Test route
 app.get("/test", (_req, res) => {
