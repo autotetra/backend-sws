@@ -15,6 +15,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"user" | "agent" | "admin">("user");
+  const [department, setDepartment] = useState("");
 
   const [error, setError] = useState("");
 
@@ -23,13 +24,19 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
     setError("");
 
     try {
-      await api.post("/auth/register", {
-        firstName,
-        lastName,
-        email,
-        password,
-        role,
-      });
+      const payload =
+        role === "agent"
+          ? {
+              firstName,
+              lastName,
+              email,
+              password,
+              role,
+              departments: [department],
+            }
+          : { firstName, lastName, email, password, role };
+
+      await api.post("/admin/users", payload);
 
       onCreated();
       onClose();
@@ -87,6 +94,23 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
           <option value="agent">Agent</option>
           <option value="admin">Admin</option>
         </select>
+
+        <br />
+        <br />
+
+        {role === "agent" && (
+          <div>
+            <label>Department: </label>
+            <select
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+            >
+              <option value="technical">Technical</option>
+              <option value="billing">Billing</option>
+              <option value="general">General</option>
+            </select>
+          </div>
+        )}
 
         <br />
         <br />
