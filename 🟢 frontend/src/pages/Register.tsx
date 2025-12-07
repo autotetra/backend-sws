@@ -24,8 +24,8 @@ const Register: React.FC<{ onBackToLogin: () => void }> = ({
       alert("Registration successful! You can now log in.");
       onBackToLogin();
     } catch (err: any) {
-      console.error(err);
-      setError("Registration failed.");
+      const backendMessage = err.response?.data?.message;
+      setError(backendMessage || "Registration failed.");
     }
   };
 

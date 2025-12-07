@@ -22,18 +22,18 @@ const ticketSchema = new mongoose.Schema(
     description: String,
     status: {
       type: String,
-      enum: ["open", "in_progress", "closed"],
-      default: "open",
+      enum: ["Open", "In Progress", "Closed"],
+      default: "Open",
     },
     category: {
       type: String,
-      enum: ["billing", "technical", "general"],
+      enum: ["Billing", "Technical", "General"],
       required: true,
     },
     priority: {
       type: String,
-      enum: ["low", "medium", "high"],
-      default: "medium",
+      enum: ["Low", "Medium", "High"],
+      default: "Medium",
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -55,9 +55,9 @@ export interface TicketDocument extends Document {
   _id: Types.ObjectId;
   title: string;
   description?: string;
-  status: "open" | "in_progress" | "closed";
-  category: "billing" | "technical" | "general";
-  priority: "low" | "medium" | "high";
+  status: "Open" | "In Progress" | "Closed";
+  category: "Billing" | "Techincal" | "General";
+  priority: "Low" | "Medium" | "High";
   createdBy: Types.ObjectId;
   assignee?: Types.ObjectId | null;
   comments: {

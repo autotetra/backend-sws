@@ -23,9 +23,9 @@ function App() {
     <div>
       {loggedIn ? (
         <>
-          {userRole === "user" && <UserDashboard name={userName} />}
-          {userRole === "agent" && <AgentDashboard name={userName} />}
-          {userRole === "admin" && <AdminDashboard name={userName} />}
+          {userRole === "User" && <UserDashboard name={userName} />}
+          {userRole === "Agent" && <AgentDashboard name={userName} />}
+          {userRole === "Admin" && <AdminDashboard name={userName} />}
 
           <button onClick={() => setLoggedIn(false)}>Logout</button>
         </>

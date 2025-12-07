@@ -38,7 +38,7 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
 
   const fetchUsers = async () => {
     try {
-      const res = await api.get<User[]>("/admin/users");
+      const res = await api.get<User[]>("/users");
       setUsers(res.data);
     } catch (err) {
       console.error("Failed to fetch users", err);
@@ -49,7 +49,7 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
 
   const fetchTickets = async () => {
     try {
-      const res = await api.get<Ticket[]>("/admin/tickets");
+      const res = await api.get<Ticket[]>("/tickets");
       setTickets(res.data);
     } catch (err) {
       console.error("Failed to fetch tickets", err);
@@ -67,7 +67,7 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
     if (!window.confirm("Delete this user?")) return;
 
     try {
-      await api.delete(`/admin/users/${id}`);
+      await api.delete(`/users/${id}`);
       setUsers((prev) => prev.filter((u) => u._id !== id));
     } catch (err) {
       console.error("Delete user error", err);
@@ -79,7 +79,7 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
     if (!window.confirm("Delete this ticket?")) return;
 
     try {
-      await api.delete(`/admin/tickets/${id}`);
+      await api.delete(`/tickets/${id}`);
       setTickets((prev) => prev.filter((t) => t._id !== id));
     } catch (err) {
       console.error("Delete ticket error", err);

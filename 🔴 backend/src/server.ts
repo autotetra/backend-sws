@@ -4,12 +4,12 @@ import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import userRoutes from "./routes/userRoutes";
 
 import { connectDB } from "./config/db";
 import authRoutes from "./routes/authRoutes";
 import ticketRoutes from "./routes/ticketRoute";
 import { socketAuth } from "./middleware/socketAuth";
-import adminRoutes from "./routes/adminRoutes";
 
 // Load environment variables
 dotenv.config();
@@ -71,7 +71,7 @@ connectDB();
 // Use routes
 app.use("/api/auth", authRoutes);
 app.use("/api/tickets", ticketRoutes);
-app.use("/api/admin", adminRoutes);
+app.use("/api/users", userRoutes);
 
 // Test route
 app.get("/test", (_req, res) => {

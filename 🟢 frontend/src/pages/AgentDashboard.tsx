@@ -6,9 +6,9 @@ type Ticket = {
   _id: string;
   title: string;
   description?: string;
-  status: "open" | "in_progress" | "closed";
-  category: "billing" | "technical" | "general";
-  priority: "low" | "medium" | "high";
+  status: "Open" | "In Progress" | "Closed";
+  category: "Billing" | "Technical" | "General";
+  priority: "Low" | "Medium" | "High";
   createdBy: any;
   assignee: any;
   createdAt: string;
@@ -23,12 +23,12 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
   const [socket, setSocket] = useState<any>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
-  const [editPriority, setEditPriority] = useState<"low" | "medium" | "high">(
-    "medium"
+  const [editPriority, setEditPriority] = useState<"Low" | "Medium" | "High">(
+    "Medium"
   );
   const [editStatus, setEditStatus] = useState<
-    "open" | "in_progress" | "closed"
-  >("open");
+    "Open" | "In Progress" | "Closed"
+  >("Open");
 
   // 1. Create socket connection
   useEffect(() => {
@@ -142,13 +142,13 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
             <select
               value={editPriority}
               onChange={(e) =>
-                setEditPriority(e.target.value as "low" | "medium" | "high")
+                setEditPriority(e.target.value as "Low" | "Medium" | "High")
               }
               style={{ marginLeft: "10px" }}
             >
-              <option value="low">low</option>
-              <option value="medium">medium</option>
-              <option value="high">high</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
             </select>
           </p>
 
@@ -158,14 +158,14 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
               value={editStatus}
               onChange={(e) =>
                 setEditStatus(
-                  e.target.value as "open" | "in_progress" | "closed"
+                  e.target.value as "Open" | "In Progress" | "Closed"
                 )
               }
               style={{ marginLeft: "10px" }}
             >
-              <option value="open">open</option>
-              <option value="in_progress">in progress</option>
-              <option value="closed">closed</option>
+              <option value="Open">Open</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Closed">Closed</option>
             </select>
           </p>
 

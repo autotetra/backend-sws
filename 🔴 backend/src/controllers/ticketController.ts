@@ -13,7 +13,7 @@ export const createTicket = async (req: CustomRequest, res: Response) => {
 
     // 1. Get Agents (NOT LEAN — we want real Mongoose docs)
     const agentMembers: IUser[] = await User.find({
-      role: "agent",
+      role: "Agent",
       departments: category,
     });
 
@@ -25,7 +25,7 @@ export const createTicket = async (req: CustomRequest, res: Response) => {
         agentMembers.map(async (member) => {
           const openCount = await Ticket.countDocuments({
             assignee: member._id,
-            status: "open",
+            status: "Open",
           });
 
           return { member, openCount };
@@ -58,7 +58,7 @@ export const createTicket = async (req: CustomRequest, res: Response) => {
     });
   } catch (err) {
     console.error("Create ticket error:", err);
-    res.status(500).json({ message: "Server error." });
+    res.status(500).json({ message: "Internal server error." });
   }
 };
 
@@ -80,8 +80,8 @@ export const getTickets = async (req: CustomRequest, res: Response) => {
 
     res.status(200).json(tickets);
   } catch (err) {
-    console.error("Get tickets errpr:", err);
-    res.status(500).json({ message: 'Server error."});' });
+    console.error("Get tickets error:", err);
+    res.status(500).json({ message: 'Internal server error."});' });
   }
 };
 
@@ -111,9 +111,9 @@ export const getTicketById = async (req: CustomRequest, res: Response) => {
 export const updateTicket = async (req: CustomRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
-    const ticket = await Ticket.findById(id);
+    let updates = req.body;
 
+    const ticket = await Ticket.findById(id);
     if (!ticket) {
       return res.status(404).json({ message: "Ticket not found." });
     }
@@ -122,18 +122,34 @@ export const updateTicket = async (req: CustomRequest, res: Response) => {
     if (!user) {
       return res.status(401).json({ message: "Unauthorized." });
     }
-    // console.log(user, ticket);
-    const { canModify } = canManageTicket(req, ticket);
 
-    if (!canModify) {
-      return res
-        .status(403)
-        .json({ message: "You are not allowed to update this ticket." });
+    // --------------------------------------------
+    // SPECIAL CASE: Agent assigning themselves
+    // This must happen BEFORE the general canModify check
+    // --------------------------------------------
+    const isSelfAssignment =
+      user.role === "Agent" &&
+      updates.assignee &&
+      updates.assignee === user._id.toString();
+
+    if (!isSelfAssignment) {
+      // Normal permission logic
+      const { canModify } = canManageTicket(req, ticket);
+
+      if (!canModify) {
+        return res
+          .status(403)
+          .json({ message: "You are not allowed to update this ticket." });
+      }
     }
 
-    // 🛑 Agents can only assign to themselves
+    // --------------------------------------------
+    // Assignment validation rules
+    // --------------------------------------------
+
+    // Agents cannot assign *anyone else*
     if (
-      user.role === "agent" &&
+      user.role === "Agent" &&
       updates.assignee &&
       updates.assignee !== user._id.toString()
     ) {
@@ -142,13 +158,26 @@ export const updateTicket = async (req: CustomRequest, res: Response) => {
         .json({ message: "Agent users can only assign themselves." });
     }
 
-    // 🛑 Normal users can never assign tickets
-    if (user.role === "user" && updates.assignee) {
+    // Users cannot assign at all
+    if (user.role === "User" && updates.assignee) {
       return res
         .status(403)
         .json({ message: "Users are not allowed to assign tickets." });
     }
 
+    // --------------------------------------------
+    // Normal users can only update title/description
+    // --------------------------------------------
+    if (user.role === "User") {
+      const { title, description } = req.body;
+      updates = {};
+      if (typeof title === "string") updates.title = title;
+      if (typeof description === "string") updates.description = description;
+    }
+
+    // --------------------------------------------
+    // Apply updates
+    // --------------------------------------------
     Object.assign(ticket, updates);
     await ticket.save();
 
@@ -156,15 +185,14 @@ export const updateTicket = async (req: CustomRequest, res: Response) => {
       .populate("createdBy", "firstName lastName email role")
       .populate("assignee", "firstName lastName email role");
 
-    // Emit ticket update event via WebSocket
     if (populatedTicket) {
       emitTicketUpdate(populatedTicket);
     }
 
-    res.status(200).json(populatedTicket);
+    return res.status(200).json(populatedTicket);
   } catch (err) {
     console.error("Error updating ticket:", err);
-    res.status(500).json({ message: "Internal server error." });
+    return res.status(500).json({ message: "Internal server error." });
   }
 };
 

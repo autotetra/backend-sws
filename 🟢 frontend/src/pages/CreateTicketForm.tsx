@@ -40,7 +40,7 @@ const CreateTicketForm: React.FC<Props> = ({ users, onClose, onCreated }) => {
     }
 
     try {
-      await api.post("/admin/tickets", {
+      await api.post("/tickets", {
         title,
         description,
         status,
@@ -100,31 +100,6 @@ const CreateTicketForm: React.FC<Props> = ({ users, onClose, onCreated }) => {
           <option value="billing">billing</option>
           <option value="technical">technical</option>
           <option value="general">general</option>
-        </select>
-        <br />
-
-        <label>Created By: </label>
-        <select
-          value={createdBy}
-          onChange={(e) => setCreatedBy(e.target.value)}
-        >
-          <option value="">-- select --</option>
-          {users.map((u) => (
-            <option key={u._id} value={u._id}>
-              {u.firstName} {u.lastName}
-            </option>
-          ))}
-        </select>
-        <br />
-
-        <label>Assignee: </label>
-        <select value={assignee} onChange={(e) => setAssignee(e.target.value)}>
-          <option value="">-- none --</option>
-          {agentUsers.map((u) => (
-            <option key={u._id} value={u._id}>
-              {u.firstName} {u.lastName}
-            </option>
-          ))}
         </select>
         <br />
 
