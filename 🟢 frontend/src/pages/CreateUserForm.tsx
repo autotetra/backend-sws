@@ -14,7 +14,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"user" | "agent" | "admin">("user");
+  const [role, setRole] = useState<"User" | "Agent" | "Admin">("User");
   const [department, setDepartment] = useState("");
 
   const [error, setError] = useState("");
@@ -25,7 +25,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
 
     try {
       const payload =
-        role === "agent"
+        role === "Agent"
           ? {
               firstName,
               lastName,
@@ -36,7 +36,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
             }
           : { firstName, lastName, email, password, role };
 
-      await api.post("/admin/users", payload);
+      await api.post("/users", payload);
 
       onCreated();
       onClose();
@@ -98,7 +98,7 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
         <br />
         <br />
 
-        {role === "agent" && (
+        {role === "Agent" && (
           <div>
             <label>Department: </label>
             <select
