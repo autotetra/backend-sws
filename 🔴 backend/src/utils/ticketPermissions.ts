@@ -15,7 +15,7 @@ export function canManageTicket(req: CustomRequest, ticket: TicketDocument) {
 
   const isOwner = ticket.createdBy.equals(user._id as Types.ObjectId);
   const isAssignee = ticket.assignee?.toString() === user._id.toString();
-  const isAdmin = user.role === "admin";
+  const isAdmin = user.role === "Admin";
 
   return {
     isOwner,

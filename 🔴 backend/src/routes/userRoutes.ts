@@ -5,6 +5,7 @@ import {
   getUsers,
   createUser,
   deleteUser,
+  updateUser,
 } from "../controllers/userController";
 
 const router = express.Router();
@@ -16,5 +17,6 @@ router.use(requireAuth);
 router.get("/", requireRole("Admin"), getUsers);
 router.post("/", requireRole("Admin"), createUser);
 router.delete("/:id", requireRole("Admin"), deleteUser);
+router.patch("/:id", requireRole("Admin"), updateUser);
 
 export default router;

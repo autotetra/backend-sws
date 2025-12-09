@@ -66,12 +66,11 @@ export const getTickets = async (req: CustomRequest, res: Response) => {
   try {
     let filter = {};
 
-    // Role-based access
     if (req.user?.role === "User") {
       filter = { createdBy: req.user.id };
     } else if (req.user?.role === "Agent") {
       filter = { assignee: req.user.id };
-    } // Admins can see all tickets (no filter)
+    }
 
     const tickets = await Ticket.find(filter)
       .populate("createdBy", "firstName lastName email role")
@@ -81,7 +80,7 @@ export const getTickets = async (req: CustomRequest, res: Response) => {
     res.status(200).json(tickets);
   } catch (err) {
     console.error("Get tickets error:", err);
-    res.status(500).json({ message: 'Internal server error."});' });
+    res.status(500).json({ message: "Internal server error." });
   }
 };
 
