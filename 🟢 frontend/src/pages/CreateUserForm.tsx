@@ -90,9 +90,9 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
 
         <label>Role: </label>
         <select value={role} onChange={(e) => setRole(e.target.value as any)}>
-          <option value="user">User</option>
-          <option value="agent">Agent</option>
-          <option value="admin">Admin</option>
+          <option value="User">User</option>
+          <option value="Agent">Agent</option>
+          <option value="Admin">Admin</option>
         </select>
 
         <br />
@@ -105,15 +105,12 @@ const CreateUserForm: React.FC<CreateUserFormProps> = ({
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
             >
-              <option value="technical">Technical</option>
-              <option value="billing">Billing</option>
-              <option value="general">General</option>
+              <option value="Technical">Technical</option>
+              <option value="Billing">Billing</option>
+              <option value="General">General</option>
             </select>
           </div>
         )}
-
-        <br />
-        <br />
 
         <button type="submit">Create</button>
         <button type="button" onClick={onClose} style={{ marginLeft: "10px" }}>

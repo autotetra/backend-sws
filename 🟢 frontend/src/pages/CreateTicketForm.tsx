@@ -17,14 +17,12 @@ interface Props {
 const CreateTicketForm: React.FC<Props> = ({ users, onClose, onCreated }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("open");
-  const [priority, setPriority] = useState("medium");
-  const [category, setCategory] = useState("general");
-  const [createdBy, setCreatedBy] = useState("");
-  const [assignee, setAssignee] = useState("");
+  const [status, setStatus] = useState("Open");
+  const [priority, setPriority] = useState("Medium");
+  const [category, setCategory] = useState("General");
   const [error, setError] = useState("");
 
-  const agentUsers = users.filter((u) => u.role === "agent");
+  const agentUsers = users.filter((u) => u.role === "Agent");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,10 +30,6 @@ const CreateTicketForm: React.FC<Props> = ({ users, onClose, onCreated }) => {
 
     if (!title.trim()) {
       setError("Title is required");
-      return;
-    }
-    if (!createdBy) {
-      setError("Created By is required");
       return;
     }
 
@@ -46,8 +40,6 @@ const CreateTicketForm: React.FC<Props> = ({ users, onClose, onCreated }) => {
         status,
         priority,
         category,
-        createdBy,
-        assignee: assignee || null,
       });
 
       onCreated(); // refresh tickets
@@ -81,25 +73,25 @@ const CreateTicketForm: React.FC<Props> = ({ users, onClose, onCreated }) => {
 
         <label>Status: </label>
         <select value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="open">open</option>
-          <option value="in_progress">in_progress</option>
-          <option value="closed">closed</option>
+          <option value="Open">Open</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Closed">Closed</option>
         </select>
         <br />
 
         <label>Priority: </label>
         <select value={priority} onChange={(e) => setPriority(e.target.value)}>
-          <option value="low">low</option>
-          <option value="medium">medium</option>
-          <option value="high">high</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
         </select>
         <br />
 
         <label>Category: </label>
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
-          <option value="billing">billing</option>
-          <option value="technical">technical</option>
-          <option value="general">general</option>
+          <option value="Billing">Billing</option>
+          <option value="Technical">Technical</option>
+          <option value="General">General</option>
         </select>
         <br />
 

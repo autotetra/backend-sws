@@ -67,9 +67,9 @@ export const getTickets = async (req: CustomRequest, res: Response) => {
     let filter = {};
 
     // Role-based access
-    if (req.user?.role === "user") {
+    if (req.user?.role === "User") {
       filter = { createdBy: req.user.id };
-    } else if (req.user?.role === "agent") {
+    } else if (req.user?.role === "Agent") {
       filter = { assignee: req.user.id };
     } // Admins can see all tickets (no filter)
 
@@ -112,8 +112,8 @@ export const updateTicket = async (req: CustomRequest, res: Response) => {
   try {
     const { id } = req.params;
     let updates = req.body;
-
     const ticket = await Ticket.findById(id);
+
     if (!ticket) {
       return res.status(404).json({ message: "Ticket not found." });
     }
@@ -122,32 +122,16 @@ export const updateTicket = async (req: CustomRequest, res: Response) => {
     if (!user) {
       return res.status(401).json({ message: "Unauthorized." });
     }
+    // console.log(user, ticket);
+    const { canModify } = canManageTicket(req, ticket);
 
-    // --------------------------------------------
-    // SPECIAL CASE: Agent assigning themselves
-    // This must happen BEFORE the general canModify check
-    // --------------------------------------------
-    const isSelfAssignment =
-      user.role === "Agent" &&
-      updates.assignee &&
-      updates.assignee === user._id.toString();
-
-    if (!isSelfAssignment) {
-      // Normal permission logic
-      const { canModify } = canManageTicket(req, ticket);
-
-      if (!canModify) {
-        return res
-          .status(403)
-          .json({ message: "You are not allowed to update this ticket." });
-      }
+    if (!canModify) {
+      return res
+        .status(403)
+        .json({ message: "You are not allowed to update this ticket." });
     }
 
-    // --------------------------------------------
-    // Assignment validation rules
-    // --------------------------------------------
-
-    // Agents cannot assign *anyone else*
+    // 🛑 Agents can only assign to themselves
     if (
       user.role === "Agent" &&
       updates.assignee &&
@@ -158,16 +142,14 @@ export const updateTicket = async (req: CustomRequest, res: Response) => {
         .json({ message: "Agent users can only assign themselves." });
     }
 
-    // Users cannot assign at all
+    // 🛑 Normal users can never assign tickets
     if (user.role === "User" && updates.assignee) {
       return res
         .status(403)
         .json({ message: "Users are not allowed to assign tickets." });
     }
 
-    // --------------------------------------------
-    // Normal users can only update title/description
-    // --------------------------------------------
+    // Users can only change title & description
     if (user.role === "User") {
       const { title, description } = req.body;
       updates = {};
@@ -175,9 +157,6 @@ export const updateTicket = async (req: CustomRequest, res: Response) => {
       if (typeof description === "string") updates.description = description;
     }
 
-    // --------------------------------------------
-    // Apply updates
-    // --------------------------------------------
     Object.assign(ticket, updates);
     await ticket.save();
 
@@ -185,14 +164,15 @@ export const updateTicket = async (req: CustomRequest, res: Response) => {
       .populate("createdBy", "firstName lastName email role")
       .populate("assignee", "firstName lastName email role");
 
+    // Emit ticket update event via WebSocket
     if (populatedTicket) {
       emitTicketUpdate(populatedTicket);
     }
 
-    return res.status(200).json(populatedTicket);
+    res.status(200).json(populatedTicket);
   } catch (err) {
     console.error("Error updating ticket:", err);
-    return res.status(500).json({ message: "Internal server error." });
+    res.status(500).json({ message: "Internal server error." });
   }
 };
 

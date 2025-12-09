@@ -26,7 +26,7 @@ function App() {
           {userRole === "User" && <UserDashboard name={userName} />}
           {userRole === "Agent" && <AgentDashboard name={userName} />}
           {userRole === "Admin" && <AdminDashboard name={userName} />}
-
+          <br />
           <button onClick={() => setLoggedIn(false)}>Logout</button>
         </>
       ) : showRegister ? (
