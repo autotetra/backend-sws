@@ -28,6 +28,12 @@ interface Ticket {
   createdBy?: TicketUserRef;
   assignee?: TicketUserRef | null;
   createdAt: string;
+
+  comments?: {
+    body: string;
+    createdAt: string;
+    author?: { email?: string };
+  }[];
 }
 
 interface Props {
@@ -54,9 +60,13 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
 
   // ---- editing state: TICKETS ----
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [newComment, setNewComment] = useState("");
   const [ticketEdits, setTicketEdits] = useState<
     Partial<Ticket> & { assigneeId?: string | null }
   >({});
+
+  const [showTicketModal, setShowTicketModal] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -234,6 +244,45 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
     } catch (err) {
       console.error("Update ticket error", err);
       alert("Failed to update ticket");
+    }
+  };
+
+  const handleOpenTicket = async (t: Ticket) => {
+    try {
+      const res = await api.get<Ticket>(`/tickets/${t._id}`);
+      setSelectedTicket(res.data);
+      setNewComment("");
+    } catch (err) {
+      console.error("Failed to load ticket", err);
+      alert("Failed to load ticket");
+    }
+  };
+
+  const openTicket = async (t: Ticket) => {
+    try {
+      const res = await api.get<Ticket>(`/tickets/${t._id}`);
+      setSelectedTicket(res.data as Ticket);
+      setNewComment("");
+      setShowTicketModal(true); // ← OPEN THE MODAL
+    } catch (err) {
+      console.error("Failed to load ticket details", err);
+      alert("Failed to load ticket details");
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!selectedTicket || !newComment.trim()) return;
+
+    try {
+      const res = await api.post(`/tickets/${selectedTicket._id}/comments`, {
+        body: newComment,
+      });
+
+      setSelectedTicket(res.data as Ticket); // updated ticket with new comments
+      setNewComment("");
+    } catch (err) {
+      console.error("Failed to add comment", err);
+      alert("Failed to add comment");
     }
   };
 
@@ -578,6 +627,14 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
                         >
                           Edit
                         </button>
+
+                        <button
+                          onClick={() => openTicket(t)}
+                          style={{ marginRight: 4 }}
+                        >
+                          Open
+                        </button>
+
                         <button onClick={() => handleDeleteTicket(t._id)}>
                           Delete
                         </button>
@@ -589,6 +646,130 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
             })}
           </tbody>
         </table>
+      )}
+      {selectedTicket && (
+        <div style={{ border: "1px solid #ccc", padding: 16, marginTop: 20 }}>
+          <h3>Ticket Details</h3>
+
+          <p>
+            <strong>Title:</strong> {selectedTicket.title}
+          </p>
+          <p>
+            <strong>Description:</strong> (not included yet)
+          </p>
+          <p>
+            <strong>Status:</strong> {selectedTicket.status}
+          </p>
+          <p>
+            <strong>Priority:</strong> {selectedTicket.priority}
+          </p>
+          <p>
+            <strong>Category:</strong> {selectedTicket.category}
+          </p>
+          <p>
+            <strong>Created:</strong>{" "}
+            {new Date(selectedTicket.createdAt).toLocaleString()}
+          </p>
+
+          <h4>Comments</h4>
+          <ul>
+            {selectedTicket.comments?.map((c, i) => (
+              <li key={i}>
+                <strong>{c.author?.email ?? "Unknown"}:</strong> {c.body}
+                <br />
+                <small>{new Date(c.createdAt).toLocaleString()}</small>
+              </li>
+            ))}
+          </ul>
+
+          <button onClick={() => setSelectedTicket(null)}>Close</button>
+        </div>
+      )}
+      {showTicketModal && selectedTicket && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              background: "white",
+              padding: "20px",
+              borderRadius: "8px",
+              width: "600px",
+              maxHeight: "80vh",
+              overflowY: "auto",
+            }}
+          >
+            <h2>Ticket Details</h2>
+
+            <p>
+              <strong>Title:</strong> {selectedTicket.title}
+            </p>
+            <p>
+              <strong>Status:</strong> {selectedTicket.status}
+            </p>
+            <p>
+              <strong>Priority:</strong> {selectedTicket.priority}
+            </p>
+            <p>
+              <strong>Category:</strong> {selectedTicket.category}
+            </p>
+            <p>
+              <strong>Created:</strong>{" "}
+              {new Date(selectedTicket.createdAt).toLocaleString()}
+            </p>
+
+            <h3>Comments</h3>
+
+            {selectedTicket.comments && selectedTicket.comments.length > 0 ? (
+              <ul>
+                {selectedTicket.comments.map((c: any) => (
+                  <li key={c._id} style={{ marginBottom: "10px" }}>
+                    <strong>{c.author?.email || "Unknown user"}: </strong>
+                    <p style={{ margin: "3px 0" }}>{c.body}</p>
+                    <small>{new Date(c.createdAt).toLocaleString()}</small>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No comments yet.</p>
+            )}
+
+            <textarea
+              placeholder="Write a comment..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              rows={3}
+              style={{ width: "100%", marginTop: "10px" }}
+            />
+
+            <button onClick={handleAddComment} style={{ marginTop: "10px" }}>
+              Add Comment
+            </button>
+
+            <br />
+
+            <button
+              onClick={() => {
+                setSelectedTicket(null);
+                setShowTicketModal(false);
+              }}
+              style={{ marginTop: "20px" }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

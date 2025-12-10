@@ -2,6 +2,18 @@ import React, { useEffect, useState } from "react";
 import api from "../api";
 import io from "socket.io-client";
 
+type Comment = {
+  _id: string;
+  body: string;
+  createdAt: string;
+  author?: {
+    email?: string;
+  } | null;
+};
+type TicketWithComments = Ticket & {
+  comments?: Comment[];
+};
+
 type Ticket = {
   _id: string;
   title: string;
@@ -12,6 +24,7 @@ type Ticket = {
   createdBy: any;
   assignee: any;
   createdAt: string;
+  comments?: Comment[];
 };
 
 interface AgentDashboardProps {
@@ -29,6 +42,11 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
   const [editStatus, setEditStatus] = useState<
     "Open" | "In Progress" | "Closed"
   >("Open");
+
+  const [commentText, setCommentText] = useState("");
+
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState("");
 
   // 1. Create socket connection
   useEffect(() => {
@@ -69,10 +87,20 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
   }, [socket]);
 
   // 4. When user clicks a ticket, sync the editable fields
-  const handleSelectTicket = (t: Ticket) => {
-    setSelectedTicket(t);
-    setEditPriority(t.priority);
-    setEditStatus(t.status);
+  const handleSelectTicket = async (t: Ticket) => {
+    try {
+      const res = await api.get(`/tickets/${t._id}`);
+      const fullTicket = res.data as Ticket & { comments?: any[] };
+
+      setSelectedTicket(fullTicket);
+      setComments(fullTicket.comments || []);
+
+      setEditPriority(fullTicket.priority);
+      setEditStatus(fullTicket.status);
+    } catch (err) {
+      console.error("Failed to load ticket details:", err);
+      alert("Failed to load ticket details");
+    }
   };
 
   // 5. Save changes
@@ -97,6 +125,24 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
     } catch (err) {
       console.error("Failed to update ticket:", err);
       alert("Failed to update ticket");
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!selectedTicket || !newComment.trim()) return;
+
+    try {
+      const res = await api.post(`/tickets/${selectedTicket._id}/comments`, {
+        body: newComment,
+      });
+
+      const updated = res.data as TicketWithComments;
+
+      setComments(updated.comments || []);
+      setNewComment("");
+    } catch (err) {
+      console.error("Failed to add comment:", err);
+      alert("Failed to add comment");
     }
   };
 
@@ -177,6 +223,31 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
           <button onClick={handleUpdate} style={{ marginRight: "10px" }}>
             Save Changes
           </button>
+          {/* COMMENTS */}
+          <h3>Comments</h3>
+
+          <ul>
+            {comments.map((c, i) => (
+              <li key={i} style={{ marginBottom: "10px" }}>
+                <strong>{c.author?.email || "Unknown user"}:</strong>
+                <br />
+                {c.body}
+                <br />
+                <small>{new Date(c.createdAt).toLocaleString()}</small>
+              </li>
+            ))}
+          </ul>
+
+          <textarea
+            placeholder="Write a comment..."
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            style={{ width: "300px", height: "80px" }}
+          />
+
+          <br />
+
+          <button onClick={handleAddComment}>Add Comment</button>
           <button onClick={() => setSelectedTicket(null)}>Close</button>
         </div>
       )}

@@ -75,6 +75,7 @@ export const getTickets = async (req: CustomRequest, res: Response) => {
     const tickets = await Ticket.find(filter)
       .populate("createdBy", "firstName lastName email role")
       .populate("assignee", "firstName lastName email role")
+      .populate("comments.author", "firstName lastName email role email")
       .sort({ createdAt: -1 });
 
     res.status(200).json(tickets);
@@ -88,7 +89,8 @@ export const getTicketById = async (req: CustomRequest, res: Response) => {
   try {
     const ticket = await Ticket.findById(req.params.id)
       .populate("createdBy", "firstName lastName email role")
-      .populate("assignee", "firstName lastName email role");
+      .populate("assignee", "firstName lastName email role")
+      .populate("comments.author", "firstName lastName email role email");
 
     if (!ticket) {
       return res.status(404).json({ message: "Ticket not found." });

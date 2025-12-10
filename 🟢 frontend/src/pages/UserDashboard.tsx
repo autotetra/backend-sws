@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from "react";
 import api from "../api";
 
+type Comment = {
+  _id: string;
+  body: string;
+  createdAt: string;
+  author?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  };
+};
+
 type Ticket = {
   _id: string;
   title: string;
@@ -11,6 +22,7 @@ type Ticket = {
   createdBy: string;
   assignee?: string | null;
   createdAt: string;
+  comments?: Comment[];
 };
 
 const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
@@ -29,6 +41,12 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
 
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
+
+  // Comment state
+  const [newComment, setNewComment] = useState("");
+  const [isAddingComment, setIsAddingComment] = useState(false);
+
+  const [showTicketModal, setShowTicketModal] = useState(false);
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,6 +148,40 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
     }
   };
 
+  const addComment = async () => {
+    if (!selectedTicket) return;
+    const trimmed = newComment.trim();
+    if (!trimmed) return;
+
+    try {
+      setIsAddingComment(true);
+      setError("");
+
+      const res = await api.post(`/tickets/${selectedTicket._id}/comments`, {
+        body: trimmed,
+      });
+
+      const updated = res.data as Ticket;
+
+      // update list
+      setMyTickets((prev) =>
+        prev.map((t) => (t._id === updated._id ? updated : t))
+      );
+
+      // update selected
+      setSelectedTicket(updated);
+
+      // clear input
+      setNewComment("");
+    } catch (err: any) {
+      console.error("Add comment error", err);
+      const msg = err?.response?.data?.message || "Failed to add comment";
+      setError(msg);
+    } finally {
+      setIsAddingComment(false);
+    }
+  };
+
   useEffect(() => {
     fetchTickets();
   }, []);
@@ -187,6 +239,7 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
                 setEditDescription(t.description || "");
                 setIsEditingTitle(false);
                 setIsEditingDescription(false);
+                setNewComment("");
               }}
             >
               {t.title}
@@ -288,7 +341,46 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
             <strong>Created:</strong>{" "}
             {new Date(selectedTicket.createdAt).toLocaleString()}
           </p>
+          {/* ======================= COMMENTS ======================= */}
+          <div style={{ marginTop: "20px" }}>
+            <h4>Comments</h4>
 
+            {/* Existing comments */}
+            {selectedTicket.comments && selectedTicket.comments.length > 0 ? (
+              <ul>
+                {selectedTicket.comments.map((c: any) => (
+                  <li key={c._id} style={{ marginBottom: "10px" }}>
+                    <strong>{c.author?.email || "Unknown user"}:</strong>
+                    <p style={{ margin: "3px 0" }}>{c.body}</p>
+                    <small>{new Date(c.createdAt).toLocaleString()}</small>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No comments yet.</p>
+            )}
+
+            {/* Add new comment */}
+            <textarea
+              placeholder="Write a comment..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              rows={3}
+              style={{ width: "300px", marginTop: "10px" }}
+            />
+
+            <br />
+
+            <button
+              onClick={addComment}
+              disabled={isAddingComment}
+              style={{ marginTop: "10px" }}
+            >
+              {isAddingComment ? "Posting..." : "Add Comment"}
+            </button>
+          </div>
+          {/* ======================================================== */}
+          <br />
           <button
             onClick={() => deleteTicket(selectedTicket._id)}
             style={{ marginRight: "10px", color: "red" }}
