@@ -68,6 +68,8 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
 
   const [showTicketModal, setShowTicketModal] = useState(false);
 
+  const [socket, setSocket] = useState<any>(null);
+
   const fetchUsers = async () => {
     try {
       const res = await api.get<User[]>("/users");
@@ -94,6 +96,36 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
     fetchUsers();
     fetchTickets();
   }, []);
+
+  useEffect(() => {
+    const s = io("http://localhost:5050", {
+      withCredentials: true,
+    } as any);
+
+    setSocket(s);
+
+    return () => {
+      s.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const refresh = () => {
+      fetchTickets(); // <-- already exists in admin
+    };
+
+    socket.on("ticketCreated", refresh);
+    socket.on("ticketUpdated", refresh);
+    socket.on("ticketDeleted", refresh);
+
+    return () => {
+      socket.off("ticketCreated", refresh);
+      socket.off("ticketUpdated", refresh);
+      socket.off("ticketDeleted", refresh);
+    };
+  }, [socket]);
 
   // ---- helpers ----
   const agents = users.filter((u) => u.role === "Agent");

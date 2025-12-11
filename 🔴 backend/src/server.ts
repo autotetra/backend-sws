@@ -45,7 +45,7 @@ io.on("connection", (socket) => {
     socket.join(user._id.toString());
 
     // Join role-based room (for internal/admin)
-    if (user.role === "admin" || user.role === "internal") {
+    if (user.role === "Admin" || user.role === "Agent") {
       socket.join("staff");
     }
   }

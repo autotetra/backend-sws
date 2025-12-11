@@ -36,3 +36,15 @@ export const emitTicketDelete = (ticket: TicketDocument) => {
 
   io.to("staff").emit("ticketDeleted", ticketId);
 };
+
+export const emitTicketCreated = (ticket: TicketDocument) => {
+  if (ticket.createdBy) {
+    io.to(ticket.createdBy.toString()).emit("ticketCreated", ticket);
+  }
+
+  if (ticket.assignee) {
+    io.to(ticket.assignee.toString()).emit("ticketCreated", ticket);
+  }
+
+  io.to("staff").emit("ticketCreated", ticket);
+};

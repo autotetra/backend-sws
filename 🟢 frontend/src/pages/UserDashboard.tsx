@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api from "../api";
+import io from "socket.io-client";
 
 type Comment = {
   _id: string;
@@ -46,7 +47,7 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
   const [newComment, setNewComment] = useState("");
   const [isAddingComment, setIsAddingComment] = useState(false);
 
-  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [socket, setSocket] = useState<any>(null);
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,6 +182,34 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
       setIsAddingComment(false);
     }
   };
+
+  useEffect(() => {
+    const s = io("http://localhost:5050", {
+      withCredentials: true,
+    } as any);
+
+    setSocket(s);
+
+    return () => {
+      s.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const refresh = () => fetchTickets();
+
+    socket.on("ticketUpdated", refresh);
+    socket.on("ticketDeleted", refresh);
+    socket.on("ticketCreated", refresh);
+
+    return () => {
+      socket.off("ticketUpdated", refresh);
+      socket.off("ticketDeleted", refresh);
+      socket.off("ticketCreated", refresh);
+    };
+  }, [socket]);
 
   useEffect(() => {
     fetchTickets();

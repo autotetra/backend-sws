@@ -74,17 +74,26 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
 
   // 3. Subscribe to socket updates
   useEffect(() => {
-    fetchTickets();
     if (!socket) return;
 
-    socket.on("ticketUpdated", fetchTickets);
-    socket.on("ticketCreated", fetchTickets);
+    const refresh = () => {
+      fetchTickets();
+    };
+
+    socket.on("ticketUpdated", refresh);
+    socket.on("ticketCreated", refresh);
+    socket.on("ticketDeleted", refresh);
 
     return () => {
-      socket.off("ticketUpdated", fetchTickets);
-      socket.off("ticketCreated", fetchTickets);
+      socket.off("ticketUpdated", refresh);
+      socket.off("ticketCreated", refresh);
+      socket.off("ticketDeleted", refresh);
     };
   }, [socket]);
+
+  useEffect(() => {
+    fetchTickets();
+  }, []);
 
   // 4. When user clicks a ticket, sync the editable fields
   const handleSelectTicket = async (t: Ticket) => {
