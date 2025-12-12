@@ -89,10 +89,31 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
     const handleSocketUpdate = (updated: Ticket) => {
       fetchTickets();
 
-      // Replace selected ticket *in place* if same
-      setSelectedTicket((prev) =>
-        prev && prev._id === updated._id ? updated : prev
-      );
+      setSelectedTicket((prev) => {
+        if (!prev) return prev;
+
+        // 🔥 If this ticket was open BUT is no longer assigned → CLOSE IT
+        if (prev._id === updated._id && !updated.assignee) {
+          return null;
+        }
+
+        // Otherwise update it in place
+        if (prev._id === updated._id) {
+          return updated;
+        }
+
+        return prev;
+      });
+
+      // 🔥 Only sync edit state if this ticket is still open
+      if (
+        selectedTicket &&
+        selectedTicket._id === updated._id &&
+        updated.assignee
+      ) {
+        setEditPriority(updated.priority);
+        setEditStatus(updated.status);
+      }
     };
 
     const handleDelete = (ticketId: string) => {
