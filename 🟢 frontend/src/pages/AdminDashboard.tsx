@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../api";
 import CreateUserForm from "./CreateUserForm";
 import CreateTicketForm from "./CreateTicketForm";
+import io from "socket.io-client";
 
 interface User {
   _id: string;
@@ -25,6 +26,7 @@ interface Ticket {
   status: string;
   priority: string;
   category: string;
+  description?: string;
   createdBy?: TicketUserRef;
   assignee?: TicketUserRef | null;
   createdAt: string;
@@ -70,6 +72,10 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
 
   const [socket, setSocket] = useState<any>(null);
 
+  // =======================
+  // FETCHING
+  // =======================
+
   const fetchUsers = async () => {
     try {
       const res = await api.get<User[]>("/users");
@@ -84,7 +90,24 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
   const fetchTickets = async () => {
     try {
       const res = await api.get<Ticket[]>("/tickets");
-      setTickets(res.data);
+      const freshTickets = res.data;
+
+      // 1. update list
+      setTickets(freshTickets);
+
+      // 2. if modal is open, keep selectedTicket in sync
+      setSelectedTicket((prev) => {
+        if (!prev) return prev;
+
+        const updated = freshTickets.find((t) => t._id === prev._id);
+        if (!updated) return null; // ticket deleted
+
+        // merge so we keep comments from prev, but update basic fields
+        return {
+          ...prev,
+          ...updated,
+        };
+      });
     } catch (err) {
       console.error("Failed to fetch tickets", err);
     } finally {
@@ -96,6 +119,10 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
     fetchUsers();
     fetchTickets();
   }, []);
+
+  // =======================
+  // SOCKET SETUP
+  // =======================
 
   useEffect(() => {
     const s = io("http://localhost:5050", {
@@ -112,20 +139,39 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
   useEffect(() => {
     if (!socket) return;
 
-    const refresh = () => {
-      fetchTickets(); // <-- already exists in admin
-    };
+    // New tickets → refresh list
+    socket.on("ticketCreated", fetchTickets);
 
-    socket.on("ticketCreated", refresh);
-    socket.on("ticketUpdated", refresh);
-    socket.on("ticketDeleted", refresh);
+    // When a ticket updates (title, description, status, priority, assignee, comments)
+    socket.on("ticketUpdated", (updated: Ticket) => {
+      // Update table
+      setTickets((prev) =>
+        prev.map((t) => (t._id === updated._id ? updated : t))
+      );
+
+      // Update modal if open
+      setSelectedTicket((prev) =>
+        prev && prev._id === updated._id ? updated : prev
+      );
+    });
+
+    // When a ticket is deleted
+    socket.on("ticketDeleted", (ticketId: string) => {
+      fetchTickets();
+
+      // Close modal if the open ticket was deleted
+      if (selectedTicket && selectedTicket._id === ticketId) {
+        setSelectedTicket(null);
+        setShowTicketModal(false);
+      }
+    });
 
     return () => {
-      socket.off("ticketCreated", refresh);
-      socket.off("ticketUpdated", refresh);
-      socket.off("ticketDeleted", refresh);
+      socket.off("ticketCreated", fetchTickets);
+      socket.off("ticketUpdated");
+      socket.off("ticketDeleted");
     };
-  }, [socket]);
+  }, [socket, selectedTicket]);
 
   // ---- helpers ----
   const agents = users.filter((u) => u.role === "Agent");
@@ -279,23 +325,12 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
     }
   };
 
-  const handleOpenTicket = async (t: Ticket) => {
-    try {
-      const res = await api.get<Ticket>(`/tickets/${t._id}`);
-      setSelectedTicket(res.data);
-      setNewComment("");
-    } catch (err) {
-      console.error("Failed to load ticket", err);
-      alert("Failed to load ticket");
-    }
-  };
-
   const openTicket = async (t: Ticket) => {
     try {
       const res = await api.get<Ticket>(`/tickets/${t._id}`);
       setSelectedTicket(res.data as Ticket);
       setNewComment("");
-      setShowTicketModal(true); // ← OPEN THE MODAL
+      setShowTicketModal(true);
     } catch (err) {
       console.error("Failed to load ticket details", err);
       alert("Failed to load ticket details");
@@ -679,7 +714,9 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
           </tbody>
         </table>
       )}
-      {selectedTicket && (
+
+      {/* OLD DETAILS PANEL (non-modal) */}
+      {selectedTicket && !showTicketModal && (
         <div style={{ border: "1px solid #ccc", padding: 16, marginTop: 20 }}>
           <h3>Ticket Details</h3>
 
@@ -687,7 +724,8 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
             <strong>Title:</strong> {selectedTicket.title}
           </p>
           <p>
-            <strong>Description:</strong> (not included yet)
+            <strong>Description:</strong>{" "}
+            {selectedTicket.description ?? "(no description)"}
           </p>
           <p>
             <strong>Status:</strong> {selectedTicket.status}
@@ -717,6 +755,8 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
           <button onClick={() => setSelectedTicket(null)}>Close</button>
         </div>
       )}
+
+      {/* MODAL DETAILS */}
       {showTicketModal && selectedTicket && (
         <div
           style={{
@@ -746,6 +786,10 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
 
             <p>
               <strong>Title:</strong> {selectedTicket.title}
+            </p>
+            <p>
+              <strong>Description:</strong>{" "}
+              {selectedTicket.description ?? "(no description)"}
             </p>
             <p>
               <strong>Status:</strong> {selectedTicket.status}

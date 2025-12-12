@@ -10,9 +10,6 @@ type Comment = {
     email?: string;
   } | null;
 };
-type TicketWithComments = Ticket & {
-  comments?: Comment[];
-};
 
 type Ticket = {
   _id: string;
@@ -43,26 +40,23 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
     "Open" | "In Progress" | "Closed"
   >("Open");
 
-  const [commentText, setCommentText] = useState("");
-
-  const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
 
-  // 1. Create socket connection
+  // ---------------------------------------------------
+  // SOCKET CONNECTION
+  // ---------------------------------------------------
   useEffect(() => {
-    const s = io("http://localhost:5050", {
-      withCredentials: true,
-    } as any);
-
+    const s = io("http://localhost:5050", { withCredentials: true } as any);
     setSocket(s);
 
     return () => {
-      // important: return void, not Socket
       s.disconnect();
     };
   }, []);
 
-  // 2. Fetch assigned tickets
+  // ---------------------------------------------------
+  // FETCH TICKETS (list)
+  // ---------------------------------------------------
   const fetchTickets = async () => {
     try {
       const res = await api.get<Ticket[]>("/tickets");
@@ -72,48 +66,74 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
     }
   };
 
-  // 3. Subscribe to socket updates
+  // ---------------------------------------------------
+  // FETCH FULL POPULATED TICKET
+  // ---------------------------------------------------
+  const fetchFullTicket = async (id: string) => {
+    try {
+      const res = await api.get<Ticket>(`/tickets/${id}`);
+      setSelectedTicket(res.data);
+    } catch (err) {
+      console.error("Failed to load full ticket:", err);
+    }
+  };
+
+  // ---------------------------------------------------
+  // SOCKET LISTENERS (no stale selectedTicket!)
+  // ---------------------------------------------------
   useEffect(() => {
     if (!socket) return;
 
-    const refresh = () => {
+    const refreshList = () => fetchTickets();
+
+    const handleSocketUpdate = (updated: Ticket) => {
       fetchTickets();
+
+      // Replace selected ticket *in place* if same
+      setSelectedTicket((prev) =>
+        prev && prev._id === updated._id ? updated : prev
+      );
     };
 
-    socket.on("ticketUpdated", refresh);
-    socket.on("ticketCreated", refresh);
-    socket.on("ticketDeleted", refresh);
+    const handleDelete = (ticketId: string) => {
+      fetchTickets();
+
+      setSelectedTicket((prev) =>
+        prev && prev._id === ticketId ? null : prev
+      );
+    };
+
+    socket.on("ticketCreated", refreshList);
+    socket.on("ticketUpdated", handleSocketUpdate);
+    socket.on("ticketDeleted", handleDelete);
 
     return () => {
-      socket.off("ticketUpdated", refresh);
-      socket.off("ticketCreated", refresh);
-      socket.off("ticketDeleted", refresh);
+      socket.off("ticketCreated", refreshList);
+      socket.off("ticketUpdated", handleSocketUpdate);
+      socket.off("ticketDeleted", handleDelete);
     };
   }, [socket]);
 
+  // Initial load
   useEffect(() => {
     fetchTickets();
   }, []);
 
-  // 4. When user clicks a ticket, sync the editable fields
+  // ---------------------------------------------------
+  // SELECT TICKET
+  // ---------------------------------------------------
   const handleSelectTicket = async (t: Ticket) => {
-    try {
-      const res = await api.get(`/tickets/${t._id}`);
-      const fullTicket = res.data as Ticket & { comments?: any[] };
+    await fetchFullTicket(t._id);
 
-      setSelectedTicket(fullTicket);
-      setComments(fullTicket.comments || []);
-
-      setEditPriority(fullTicket.priority);
-      setEditStatus(fullTicket.status);
-    } catch (err) {
-      console.error("Failed to load ticket details:", err);
-      alert("Failed to load ticket details");
-    }
+    setEditPriority(t.priority);
+    setEditStatus(t.status);
+    setNewComment("");
   };
 
-  // 5. Save changes
-  const handleUpdate = async () => {
+  // ---------------------------------------------------
+  // SAVE CHANGES (no closing modal)
+  // ---------------------------------------------------
+  const handleSave = async () => {
     if (!selectedTicket) return;
 
     try {
@@ -122,21 +142,24 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
         status: editStatus,
       });
 
-      // 1. Update tickets array
-      setTickets((prev: Ticket[]) =>
-        prev.map((t: Ticket) =>
-          t._id === (res.data as Ticket)._id ? (res.data as Ticket) : t
-        )
+      const updated = res.data as Ticket;
+
+      // Update list
+      setTickets((prev) =>
+        prev.map((t) => (t._id === updated._id ? updated : t))
       );
 
-      // 2. Update selected ticket
-      setSelectedTicket(null);
+      // Keep modal open, update contents
+      setSelectedTicket(updated);
     } catch (err) {
       console.error("Failed to update ticket:", err);
       alert("Failed to update ticket");
     }
   };
 
+  // ---------------------------------------------------
+  // ADD COMMENT
+  // ---------------------------------------------------
   const handleAddComment = async () => {
     if (!selectedTicket || !newComment.trim()) return;
 
@@ -145,9 +168,11 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
         body: newComment,
       });
 
-      const updated = res.data as TicketWithComments;
+      const updated = res.data as Ticket;
 
-      setComments(updated.comments || []);
+      // Update selected ticket immediately
+      setSelectedTicket(updated);
+
       setNewComment("");
     } catch (err) {
       console.error("Failed to add comment:", err);
@@ -155,6 +180,9 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
     }
   };
 
+  // ---------------------------------------------------
+  // RENDER
+  // ---------------------------------------------------
   return (
     <div>
       <h2>Agent Dashboard</h2>
@@ -196,9 +224,7 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
             <strong>Priority:</strong>
             <select
               value={editPriority}
-              onChange={(e) =>
-                setEditPriority(e.target.value as "Low" | "Medium" | "High")
-              }
+              onChange={(e) => setEditPriority(e.target.value as any)}
               style={{ marginLeft: "10px" }}
             >
               <option value="Low">Low</option>
@@ -211,11 +237,7 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
             <strong>Status:</strong>
             <select
               value={editStatus}
-              onChange={(e) =>
-                setEditStatus(
-                  e.target.value as "Open" | "In Progress" | "Closed"
-                )
-              }
+              onChange={(e) => setEditStatus(e.target.value as any)}
               style={{ marginLeft: "10px" }}
             >
               <option value="Open">Open</option>
@@ -229,15 +251,16 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
             {new Date(selectedTicket.createdAt).toLocaleString()}
           </p>
 
-          <button onClick={handleUpdate} style={{ marginRight: "10px" }}>
+          <button onClick={handleSave} style={{ marginRight: "10px" }}>
             Save Changes
           </button>
+
           {/* COMMENTS */}
           <h3>Comments</h3>
 
           <ul>
-            {comments.map((c, i) => (
-              <li key={i} style={{ marginBottom: "10px" }}>
+            {selectedTicket.comments?.map((c) => (
+              <li key={c._id} style={{ marginBottom: "10px" }}>
                 <strong>{c.author?.email || "Unknown user"}:</strong>
                 <br />
                 {c.body}

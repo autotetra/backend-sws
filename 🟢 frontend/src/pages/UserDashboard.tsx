@@ -49,6 +49,35 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
 
   const [socket, setSocket] = useState<any>(null);
 
+  // -------------------------------
+  // Fetch TICKETS (shallow list)
+  // -------------------------------
+  const fetchTickets = async () => {
+    try {
+      const res = await api.get<Ticket[]>("/tickets");
+      setMyTickets(res.data);
+    } catch (err: any) {
+      console.error(err);
+      const msg = err?.response?.data?.message || "Failed to fetch tickets";
+      setError(msg);
+    }
+  };
+
+  // -------------------------------
+  // Fetch FULL TICKET (populated)
+  // -------------------------------
+  const fetchFullTicket = async (id: string) => {
+    try {
+      const res = await api.get<Ticket>(`/tickets/${id}`);
+      setSelectedTicket(res.data);
+    } catch (err) {
+      console.error("Failed to fetch full ticket", err);
+    }
+  };
+
+  // -------------------------------
+  // Create Ticket
+  // -------------------------------
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
@@ -73,17 +102,9 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
     }
   };
 
-  const fetchTickets = async () => {
-    try {
-      const res = await api.get<Ticket[]>("/tickets");
-      setMyTickets(res.data);
-    } catch (err: any) {
-      console.error(err);
-      const msg = err?.response?.data?.message || "Failed to fetch tickets";
-      setError(msg);
-    }
-  };
-
+  // -------------------------------
+  // Delete Ticket
+  // -------------------------------
   const deleteTicket = async (id: string) => {
     try {
       await api.delete(`/tickets/${id}`);
@@ -100,7 +121,9 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
     }
   };
 
-  // Save TITLE only
+  // -------------------------------
+  // Save TITLE
+  // -------------------------------
   const saveTitle = async () => {
     if (!selectedTicket) return;
 
@@ -124,7 +147,9 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
     }
   };
 
-  // Save DESCRIPTION only
+  // -------------------------------
+  // Save DESCRIPTION
+  // -------------------------------
   const saveDescription = async () => {
     if (!selectedTicket) return;
 
@@ -149,8 +174,12 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
     }
   };
 
+  // -------------------------------
+  // Add COMMENT
+  // -------------------------------
   const addComment = async () => {
     if (!selectedTicket) return;
+
     const trimmed = newComment.trim();
     if (!trimmed) return;
 
@@ -164,15 +193,11 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
 
       const updated = res.data as Ticket;
 
-      // update list
       setMyTickets((prev) =>
         prev.map((t) => (t._id === updated._id ? updated : t))
       );
 
-      // update selected
       setSelectedTicket(updated);
-
-      // clear input
       setNewComment("");
     } catch (err: any) {
       console.error("Add comment error", err);
@@ -183,6 +208,9 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
     }
   };
 
+  // -------------------------------
+  // SOCKET CONNECTION
+  // -------------------------------
   useEffect(() => {
     const s = io("http://localhost:5050", {
       withCredentials: true,
@@ -195,26 +223,53 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
     };
   }, []);
 
+  // -------------------------------
+  // SOCKET LISTENERS
+  // -------------------------------
   useEffect(() => {
     if (!socket) return;
 
-    const refresh = () => fetchTickets();
+    // When ANY ticket is created → refresh list
+    socket.on("ticketCreated", fetchTickets);
 
-    socket.on("ticketUpdated", refresh);
-    socket.on("ticketDeleted", refresh);
-    socket.on("ticketCreated", refresh);
+    // When a ticket updates (title, description, comments, status, etc)
+    socket.on("ticketUpdated", (updated: Ticket) => {
+      // 1️⃣ Update the list instantly
+      setMyTickets((prev) =>
+        prev.map((t) => (t._id === updated._id ? updated : t))
+      );
+
+      // 2️⃣ Update selected ticket if user is viewing it
+      setSelectedTicket((prev) =>
+        prev && prev._id === updated._id ? updated : prev
+      );
+    });
+
+    // When a ticket is deleted
+    socket.on("ticketDeleted", (ticketId: string) => {
+      fetchTickets();
+      if (selectedTicket && selectedTicket._id === ticketId) {
+        setSelectedTicket(null);
+      }
+    });
 
     return () => {
-      socket.off("ticketUpdated", refresh);
-      socket.off("ticketDeleted", refresh);
-      socket.off("ticketCreated", refresh);
+      socket.off("ticketCreated", fetchTickets);
+      socket.off("ticketUpdated");
+      socket.off("ticketDeleted");
     };
-  }, [socket]);
+  }, [socket, selectedTicket]);
 
+  // -------------------------------
+  // INITIAL LOAD
+  // -------------------------------
   useEffect(() => {
     fetchTickets();
   }, []);
 
+  // -------------------------------
+  // RENDER
+  // -------------------------------
   return (
     <div>
       <h2>User Dashboard</h2>
@@ -269,6 +324,9 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
                 setIsEditingTitle(false);
                 setIsEditingDescription(false);
                 setNewComment("");
+
+                // Load the FULL populated ticket
+                fetchFullTicket(t._id);
               }}
             >
               {t.title}
@@ -370,11 +428,11 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
             <strong>Created:</strong>{" "}
             {new Date(selectedTicket.createdAt).toLocaleString()}
           </p>
+
           {/* ======================= COMMENTS ======================= */}
           <div style={{ marginTop: "20px" }}>
             <h4>Comments</h4>
 
-            {/* Existing comments */}
             {selectedTicket.comments && selectedTicket.comments.length > 0 ? (
               <ul>
                 {selectedTicket.comments.map((c: any) => (
@@ -408,7 +466,7 @@ const UserDashboard: React.FC<{ name: string }> = ({ name }) => {
               {isAddingComment ? "Posting..." : "Add Comment"}
             </button>
           </div>
-          {/* ======================================================== */}
+
           <br />
           <button
             onClick={() => deleteTicket(selectedTicket._id)}
