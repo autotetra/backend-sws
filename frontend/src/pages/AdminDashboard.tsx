@@ -278,6 +278,7 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
     setEditingTicketId(t._id);
     setTicketEdits({
       title: t.title,
+      description: t.description || "",
       status: t.status,
       priority: t.priority,
       category: t.category,
@@ -302,6 +303,7 @@ const AdminDashboard: React.FC<Props> = ({ name }) => {
 
     const payload: any = {
       title: ticketEdits.title,
+      description: ticketEdits.description,
       status: ticketEdits.status,
       priority: ticketEdits.priority,
       category: ticketEdits.category,

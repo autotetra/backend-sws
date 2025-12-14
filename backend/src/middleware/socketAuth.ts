@@ -1,21 +1,37 @@
 import jwt from "jsonwebtoken";
 import User from "../models/userModel";
 
+/**
+ * Socket.IO authentication middleware.
+ *
+ * - Reads JWT from `token` cookie
+ * - Verifies token
+ * - Attaches user document to socket (if valid)
+ *
+ * IMPORTANT:
+ * - Socket connection is NEVER blocked
+ * - If auth fails, socket connects as unauthenticated
+ */
 export const socketAuth = async (socket: any, next: any) => {
   try {
     const rawCookie = socket.request.headers.cookie;
     if (!rawCookie) return next();
 
-    const tokenCookie = rawCookie
+    // Extract `token` cookie
+    const token = rawCookie
       .split(";")
       .map((c: string) => c.trim())
       .find((c: string) => c.startsWith("token="))
       ?.split("=")[1];
 
-    if (!tokenCookie) return next();
+    if (!token) return next();
 
-    const decoded = jwt.verify(tokenCookie, process.env.JWT_SECRET!) as any;
+    // Verify JWT
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+      id: string;
+    };
 
+    // Load user from DB
     const user = await User.findById(decoded.id);
 
     if (user) {
@@ -24,6 +40,7 @@ export const socketAuth = async (socket: any, next: any) => {
 
     next();
   } catch (err) {
-    next(); // just connect as unauthenticated
+    // Fail open: allow socket connection without auth
+    next();
   }
 };

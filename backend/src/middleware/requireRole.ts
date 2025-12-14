@@ -1,7 +1,11 @@
 import { Response, NextFunction } from "express";
 import { CustomRequest } from "../../types/express/custom";
 
-export const requireRole = (...allowedRoles: string[]) => {
+/**
+ * Restrict access to users with specific roles.
+ * Must be used AFTER requireAuth.
+ */
+const requireRole = (...allowedRoles: string[]) => {
   return (req: CustomRequest, res: Response, next: NextFunction) => {
     const user = req.user;
 
@@ -12,4 +16,5 @@ export const requireRole = (...allowedRoles: string[]) => {
     next();
   };
 };
+
 export default requireRole;

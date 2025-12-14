@@ -1,14 +1,19 @@
 import { Request, Response, NextFunction } from "express";
-import { ZodType } from "zod"; // ✅ Recommended
+import { ZodType } from "zod";
 
+/**
+ * Validate request body against a Zod schema.
+ */
 const validateBody =
   (schema: ZodType<any>) =>
   (req: Request, res: Response, next: NextFunction) => {
-    const result = schema.safeParse(req.body);
+    const parsed = schema.safeParse(req.body);
 
-    if (!result.success) {
-      const errors = result.error.issues;
-      return res.status(400).json({ message: "Validation error", errors });
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: parsed.error.issues,
+      });
     }
 
     next();

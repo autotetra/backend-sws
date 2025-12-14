@@ -46,7 +46,10 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
   // SOCKET CONNECTION
   // ---------------------------------------------------
   useEffect(() => {
-    const s = io("http://localhost:5050", { withCredentials: true } as any);
+    const s = io("http://localhost:5050", {
+      withCredentials: true,
+    } as any);
+
     setSocket(s);
 
     return () => {
@@ -79,7 +82,7 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
   };
 
   // ---------------------------------------------------
-  // SOCKET LISTENERS (no stale selectedTicket!)
+  // SOCKET LISTENERS
   // ---------------------------------------------------
   useEffect(() => {
     if (!socket) return;
@@ -92,12 +95,11 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
       setSelectedTicket((prev) => {
         if (!prev) return prev;
 
-        // 🔥 If this ticket was open BUT is no longer assigned → CLOSE IT
+        // If ticket was open but unassigned → close it
         if (prev._id === updated._id && !updated.assignee) {
           return null;
         }
 
-        // Otherwise update it in place
         if (prev._id === updated._id) {
           return updated;
         }
@@ -105,7 +107,6 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
         return prev;
       });
 
-      // 🔥 Only sync edit state if this ticket is still open
       if (
         selectedTicket &&
         selectedTicket._id === updated._id &&
@@ -118,7 +119,6 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
 
     const handleDelete = (ticketId: string) => {
       fetchTickets();
-
       setSelectedTicket((prev) =>
         prev && prev._id === ticketId ? null : prev
       );
@@ -133,7 +133,7 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
       socket.off("ticketUpdated", handleSocketUpdate);
       socket.off("ticketDeleted", handleDelete);
     };
-  }, [socket]);
+  }, [socket, selectedTicket]);
 
   // Initial load
   useEffect(() => {
@@ -145,14 +145,13 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
   // ---------------------------------------------------
   const handleSelectTicket = async (t: Ticket) => {
     await fetchFullTicket(t._id);
-
     setEditPriority(t.priority);
     setEditStatus(t.status);
     setNewComment("");
   };
 
   // ---------------------------------------------------
-  // SAVE CHANGES (no closing modal)
+  // SAVE CHANGES
   // ---------------------------------------------------
   const handleSave = async () => {
     if (!selectedTicket) return;
@@ -165,12 +164,10 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
 
       const updated = res.data as Ticket;
 
-      // Update list
       setTickets((prev) =>
         prev.map((t) => (t._id === updated._id ? updated : t))
       );
 
-      // Keep modal open, update contents
       setSelectedTicket(updated);
     } catch (err) {
       console.error("Failed to update ticket:", err);
@@ -189,11 +186,7 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
         body: newComment,
       });
 
-      const updated = res.data as Ticket;
-
-      // Update selected ticket immediately
-      setSelectedTicket(updated);
-
+      setSelectedTicket(res.data as Ticket);
       setNewComment("");
     } catch (err) {
       console.error("Failed to add comment:", err);
@@ -245,7 +238,9 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
             <strong>Priority:</strong>
             <select
               value={editPriority}
-              onChange={(e) => setEditPriority(e.target.value as any)}
+              onChange={(e) =>
+                setEditPriority(e.target.value as "Low" | "Medium" | "High")
+              }
               style={{ marginLeft: "10px" }}
             >
               <option value="Low">Low</option>
@@ -258,7 +253,11 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
             <strong>Status:</strong>
             <select
               value={editStatus}
-              onChange={(e) => setEditStatus(e.target.value as any)}
+              onChange={(e) =>
+                setEditStatus(
+                  e.target.value as "Open" | "In Progress" | "Closed"
+                )
+              }
               style={{ marginLeft: "10px" }}
             >
               <option value="Open">Open</option>
@@ -276,7 +275,6 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
             Save Changes
           </button>
 
-          {/* COMMENTS */}
           <h3>Comments</h3>
 
           <ul>

@@ -1,6 +1,10 @@
 import { Request } from "express";
-import { UserDocument } from "../models/user.model";
+import { IUser } from "../../api/models/userModel";
 
+/**
+ * Express request extended with authenticated user.
+ * Used by auth & permission middleware.
+ */
 export interface CustomRequest extends Request {
-  user?: UserDocument;
+  user?: IUser;
 }

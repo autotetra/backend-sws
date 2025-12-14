@@ -3,15 +3,23 @@ import { CustomRequest } from "../../types/express/custom";
 import { Ticket } from "../models/ticketModel";
 import { User, IUser } from "../models/userModel";
 import { canManageTicket } from "../utils/ticketPermissions";
-import { emitTicketUpdate, emitTicketDelete } from "../socket/ticketSocket";
-import { io } from "../server";
+import {
+  emitTicketCreated,
+  emitTicketUpdated,
+  emitTicketDeleted,
+} from "../socket/ticketSocket";
 
+/**
+ * Create new ticket
+ * - Auto-assigns agent based on lowest open ticket count
+ * - Emits ticketCreated event
+ */
 export const createTicket = async (req: CustomRequest, res: Response) => {
   try {
     const { title, description, category } = req.body;
     const createdBy = req.user?.id;
 
-    // 1. Get Agents (NOT LEAN — we want real Mongoose docs)
+    // Agent auto-assignment based on department & workload
     const agentMembers: IUser[] = await User.find({
       role: "Agent",
       departments: category,
@@ -20,7 +28,6 @@ export const createTicket = async (req: CustomRequest, res: Response) => {
     let assignee: string | null = null;
 
     if (agentMembers.length > 0) {
-      // 2. Count open tickets for each internal member
       const membersWithCounts = await Promise.all(
         agentMembers.map(async (member) => {
           const openCount = await Ticket.countDocuments({
@@ -32,14 +39,10 @@ export const createTicket = async (req: CustomRequest, res: Response) => {
         })
       );
 
-      // 3. Pick the member with the fewest open tickets
       membersWithCounts.sort((a, b) => a.openCount - b.openCount);
-
-      // 4. Assign
       assignee = membersWithCounts[0].member._id.toString();
     }
 
-    // 5. Create ticket
     const ticket = await Ticket.create({
       title,
       description,
@@ -48,9 +51,7 @@ export const createTicket = async (req: CustomRequest, res: Response) => {
       assignee,
     });
 
-    console.log("New ticket created:", ticket);
-
-    emitTicketUpdate(ticket);
+    emitTicketCreated(ticket);
 
     res.status(201).json({
       message: "Ticket created successfully",
@@ -62,6 +63,9 @@ export const createTicket = async (req: CustomRequest, res: Response) => {
   }
 };
 
+/**
+ * Get tickets based on user role
+ */
 export const getTickets = async (req: CustomRequest, res: Response) => {
   try {
     let filter = {};
@@ -75,7 +79,7 @@ export const getTickets = async (req: CustomRequest, res: Response) => {
     const tickets = await Ticket.find(filter)
       .populate("createdBy", "firstName lastName email role")
       .populate("assignee", "firstName lastName email role")
-      .populate("comments.author", "firstName lastName email role email")
+      .populate("comments.author", "firstName lastName email role")
       .sort({ createdAt: -1 });
 
     res.status(200).json(tickets);
@@ -85,19 +89,21 @@ export const getTickets = async (req: CustomRequest, res: Response) => {
   }
 };
 
+/**
+ * Get single ticket (permission-protected)
+ */
 export const getTicketById = async (req: CustomRequest, res: Response) => {
   try {
     const ticket = await Ticket.findById(req.params.id)
       .populate("createdBy", "firstName lastName email role")
       .populate("assignee", "firstName lastName email role")
-      .populate("comments.author", "firstName lastName email role email");
+      .populate("comments.author", "firstName lastName email role");
 
     if (!ticket) {
       return res.status(404).json({ message: "Ticket not found." });
     }
 
     const { canModify } = canManageTicket(req, ticket);
-
     if (!canModify) {
       return res.status(403).json({ message: "Access denied." });
     }
@@ -109,12 +115,16 @@ export const getTicketById = async (req: CustomRequest, res: Response) => {
   }
 };
 
+/**
+ * Update ticket fields (permission-checked)
+ * - Emits ticketUpdated with populated data
+ */
 export const updateTicket = async (req: CustomRequest, res: Response) => {
   try {
     const { id } = req.params;
-    let updates = req.body;
-    const ticket = await Ticket.findById(id);
+    const updates = req.body;
 
+    const ticket = await Ticket.findById(id);
     if (!ticket) {
       return res.status(404).json({ message: "Ticket not found." });
     }
@@ -131,31 +141,30 @@ export const updateTicket = async (req: CustomRequest, res: Response) => {
         .json({ message: "You are not allowed to update this ticket." });
     }
 
-    // 🔒 same permission logic as before...
-    // (Agent assignee restriction, User limited to title/description, etc.)
-
     Object.assign(ticket, updates);
     await ticket.save();
 
     const populatedTicket = await Ticket.findById(ticket._id)
       .populate("createdBy", "firstName lastName email role")
       .populate("assignee", "firstName lastName email role")
-      // ✅ add this line
-      .populate("comments.author", "firstName lastName email role email");
+      .populate("comments.author", "firstName lastName email role");
 
-    if (populatedTicket) {
-      emitTicketUpdate(populatedTicket);
-      return res.status(200).json(populatedTicket);
+    if (!populatedTicket) {
+      return res.status(500).json({ message: "Failed to reload ticket." });
     }
 
-    // fallback (shouldn’t really hit this)
-    return res.status(200).json(ticket);
+    emitTicketUpdated(populatedTicket);
+    return res.status(200).json(populatedTicket);
   } catch (err) {
     console.error("Error updating ticket:", err);
     res.status(500).json({ message: "Internal server error." });
   }
 };
 
+/**
+ * Delete ticket
+ * - Emits ticketDeleted event
+ */
 export const deleteTicket = async (req: CustomRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -166,7 +175,6 @@ export const deleteTicket = async (req: CustomRequest, res: Response) => {
     }
 
     const { canModify } = canManageTicket(req, ticket);
-
     if (!canModify) {
       return res
         .status(403)
@@ -174,9 +182,7 @@ export const deleteTicket = async (req: CustomRequest, res: Response) => {
     }
 
     await Ticket.findByIdAndDelete(id);
-
-    // Emit ticket deletion event via WebSocket
-    emitTicketDelete(ticket);
+    emitTicketDeleted(ticket);
 
     res.status(200).json({ message: "Ticket deleted successfully." });
   } catch (err) {
@@ -185,6 +191,10 @@ export const deleteTicket = async (req: CustomRequest, res: Response) => {
   }
 };
 
+/**
+ * Add comment to ticket
+ * - Emits ticketUpdated with populated comments
+ */
 export const addCommentToTicket = async (req: CustomRequest, res: Response) => {
   try {
     const ticketId = req.params.id;
@@ -204,7 +214,6 @@ export const addCommentToTicket = async (req: CustomRequest, res: Response) => {
       return res.status(404).json({ message: "Ticket not found." });
     }
 
-    // Add comment
     ticket.comments.push({
       author: user._id,
       body,
@@ -217,16 +226,13 @@ export const addCommentToTicket = async (req: CustomRequest, res: Response) => {
       .populate("assignee", "firstName lastName email role")
       .populate("comments.author", "firstName lastName email role");
 
-    // 🔥 FIX: ensure updated is not null
     if (!updated) {
       return res
         .status(500)
         .json({ message: "Failed to reload updated ticket." });
     }
 
-    // 🔥 EMIT SOCKET UPDATE
-    emitTicketUpdate(updated);
-
+    emitTicketUpdated(updated);
     return res.status(200).json(updated);
   } catch (err) {
     console.error("Add comment error:", err);

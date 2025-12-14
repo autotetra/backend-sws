@@ -8,15 +8,19 @@ import {
   updateUser,
 } from "../controllers/userController";
 
+/**
+ * User management routes
+ * - Authentication required
+ * - Admin-only access
+ */
 const router = express.Router();
 
 router.use(requireAuth);
 
-// For now, only admin can manage users.
-// If later you want agents to also create users, just add "agent" here.
+// Admin-only user management
 router.get("/", requireRole("Admin"), getUsers);
 router.post("/", requireRole("Admin"), createUser);
-router.delete("/:id", requireRole("Admin"), deleteUser);
 router.patch("/:id", requireRole("Admin"), updateUser);
+router.delete("/:id", requireRole("Admin"), deleteUser);
 
 export default router;

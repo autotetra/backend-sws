@@ -5,18 +5,26 @@ import UserDashboard from "./pages/UserDashboard";
 import AgentDashboard from "./pages/AgentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 
+type UserRole = "User" | "Agent" | "Admin" | "";
+
 function App() {
   const [loggedIn, setLoggedIn] = useState(false);
-  const [userRole, setRole] = useState("");
-  const [userName, setName] = useState("");
+  const [userRole, setUserRole] = useState<UserRole>("");
+  const [userName, setUserName] = useState("");
   const [showRegister, setShowRegister] = useState(false);
 
-  const handleLogin = (userRole: string, userName: string) => {
+  const handleLogin = (role: Exclude<UserRole, "">, name: string) => {
     setLoggedIn(true);
-    setRole(userRole);
-    setName(userName);
+    setUserRole(role);
+    setUserName(name);
+    setShowRegister(false);
+  };
 
-    console.log("Logged in as:", userRole, userName);
+  const handleLogout = () => {
+    setLoggedIn(false);
+    setUserRole("");
+    setUserName("");
+    setShowRegister(false);
   };
 
   return (
@@ -26,8 +34,9 @@ function App() {
           {userRole === "User" && <UserDashboard name={userName} />}
           {userRole === "Agent" && <AgentDashboard name={userName} />}
           {userRole === "Admin" && <AdminDashboard name={userName} />}
+
           <br />
-          <button onClick={() => setLoggedIn(false)}>Logout</button>
+          <button onClick={handleLogout}>Logout</button>
         </>
       ) : showRegister ? (
         <Register onBackToLogin={() => setShowRegister(false)} />

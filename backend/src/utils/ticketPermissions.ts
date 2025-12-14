@@ -1,9 +1,13 @@
-import { Types } from "mongoose";
 import { CustomRequest } from "../../types/express/custom";
 import { TicketDocument } from "../models/ticketModel";
 
+/**
+ * Determines the relationship of the request user to a ticket
+ * and whether they are allowed to modify it.
+ */
 export function canManageTicket(req: CustomRequest, ticket: TicketDocument) {
   const user = req.user;
+
   if (!user) {
     return {
       isOwner: false,
@@ -13,13 +17,18 @@ export function canManageTicket(req: CustomRequest, ticket: TicketDocument) {
     };
   }
 
-  const isOwner = ticket.createdBy.equals(user._id as Types.ObjectId);
+  const userId = user._id.toString();
+
+  // Ticket creator
+  const isOwner = ticket.createdBy?.toString() === userId;
+
+  // Ticket assignee (supports populated or raw ObjectId)
   const isAssignee =
-    ticket.assignee &&
-    // If populated: ticket.assignee._id
-    (ticket.assignee._id?.toString?.() === user._id.toString() ||
-      // If NOT populated: plain ObjectId
-      ticket.assignee.toString?.() === user._id.toString());
+    !!ticket.assignee &&
+    (ticket.assignee._id?.toString?.() === userId ||
+      ticket.assignee.toString?.() === userId);
+
+  // Admin override
   const isAdmin = user.role === "Admin";
 
   return {
