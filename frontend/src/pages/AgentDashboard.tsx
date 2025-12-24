@@ -271,6 +271,11 @@ const AgentDashboard: React.FC<AgentDashboardProps> = ({ name }) => {
             {new Date(selectedTicket.createdAt).toLocaleString()}
           </p>
 
+          <p>
+            <strong>Created By:</strong>{" "}
+            {selectedTicket.createdBy?.email || "Unknown user"}
+          </p>
+
           <button onClick={handleSave} style={{ marginRight: "10px" }}>
             Save Changes
           </button>
