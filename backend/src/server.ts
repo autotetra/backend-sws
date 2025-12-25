@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import "dotenv/config";
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
@@ -10,6 +11,7 @@ import authRoutes from "./routes/authRoutes";
 import ticketRoutes from "./routes/ticketRoute";
 import userRoutes from "./routes/userRoutes";
 import { socketAuth } from "./middleware/socketAuth";
+import { askAI } from "./services/ai/aiText";
 
 // ---------------------------------------------------
 // ENV SETUP
@@ -91,13 +93,6 @@ app.use("/api/tickets", ticketRoutes);
 app.use("/api/users", userRoutes);
 
 // ---------------------------------------------------
-// HEALTH CHECK
-// ---------------------------------------------------
-app.get("/test", (_req, res) => {
-  res.send("Server is running ✅");
-});
-
-// ---------------------------------------------------
 // START SERVER
 // ---------------------------------------------------
 const PORT = process.env.PORT || 5050;
@@ -108,3 +103,23 @@ server.listen(PORT, () => {
 
 // Export Socket.IO instance for emitters
 export { io };
+
+// ---------------------------------------------------
+// HEALTH CHECK
+// ---------------------------------------------------
+app.get("/test", (_req, res) => {
+  res.send("Server is running ✅");
+});
+
+app.get("/test-ai", async (req, res) => {
+  try {
+    const prompt = String(req.query.q ?? "What is 2+2?");
+
+    const answer = await askAI(prompt);
+
+    res.json({ answer });
+  } catch (err) {
+    console.error("AI test error:", err);
+    res.status(500).json({ message: "AI test failed" });
+  }
+});
