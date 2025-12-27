@@ -11,7 +11,6 @@ import authRoutes from "./routes/authRoutes";
 import ticketRoutes from "./routes/ticketRoute";
 import userRoutes from "./routes/userRoutes";
 import { socketAuth } from "./middleware/socketAuth";
-import { askAI } from "./services/ai/aiText";
 
 // ---------------------------------------------------
 // ENV SETUP
@@ -109,17 +108,4 @@ export { io };
 // ---------------------------------------------------
 app.get("/test", (_req, res) => {
   res.send("Server is running ✅");
-});
-
-app.get("/test-ai", async (req, res) => {
-  try {
-    const prompt = String(req.query.q ?? "What is 2+2?");
-
-    const answer = await askAI(prompt);
-
-    res.json({ answer });
-  } catch (err) {
-    console.error("AI test error:", err);
-    res.status(500).json({ message: "AI test failed" });
-  }
 });
