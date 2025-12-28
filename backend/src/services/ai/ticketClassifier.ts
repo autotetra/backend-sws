@@ -80,7 +80,6 @@ Description: ${description}
     text: { format: { type: "json_object" } },
   });
 
-  // Responses API usually returns text in output[0].content[0].text
   const text = resp.output_text;
   if (!text) throw new Error("No AI text returned");
 
@@ -91,5 +90,6 @@ Description: ${description}
     throw new Error("AI returned non-JSON text");
   }
 
+  console.log(parsed);
   return validateClassification(parsed);
 }

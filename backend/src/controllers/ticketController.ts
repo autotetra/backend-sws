@@ -8,10 +8,14 @@ import {
   emitTicketUpdated,
   emitTicketDeleted,
 } from "../socket/ticketSocket";
+import { classifyTicket } from "../services/ai/ticketClassifier";
+
+const AI_CATEGORY_CONFIDENCE_THRESHOLD = 0.8;
 
 /**
  * Create new ticket
- * - Auto-assigns agent based on lowest open ticket count
+ * - Category is AI-suggested only when confidence is high
+ * - Auto-assigns agent based on lowest open ticket count (same logic as before)
  * - Emits ticketCreated event
  */
 export const createTicket = async (req: CustomRequest, res: Response) => {
@@ -19,7 +23,27 @@ export const createTicket = async (req: CustomRequest, res: Response) => {
     const { title, description, category } = req.body;
     const createdBy = req.user?.id;
 
-    // Agent auto-assignment based on department & workload
+    // ---------------------------
+    // 1) Decide final category
+    // ---------------------------
+    let finalCategory = category;
+
+    try {
+      const ai = await classifyTicket({ title, description });
+
+      if (ai.confidence >= AI_CATEGORY_CONFIDENCE_THRESHOLD) {
+        finalCategory = ai.category;
+      }
+      // else: keep the user-provided category (current behavior)
+    } catch (err) {
+      // AI failure should never block ticket creation
+      console.error("AI classification failed, using user category:", err);
+      finalCategory = category;
+    }
+
+    // ---------------------------
+    // 2) Agent auto-assignment (UNCHANGED logic)
+    // ---------------------------
     const agentMembers: IUser[] = await User.find({
       role: "Agent",
       departments: category,
@@ -43,10 +67,13 @@ export const createTicket = async (req: CustomRequest, res: Response) => {
       assignee = membersWithCounts[0].member._id.toString();
     }
 
+    // ---------------------------
+    // 3) Create ticket (UNCHANGED fields, except category uses finalCategory)
+    // ---------------------------
     const ticket = await Ticket.create({
       title,
       description,
-      category,
+      category: finalCategory,
       createdBy,
       assignee,
     });
