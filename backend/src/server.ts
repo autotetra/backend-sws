@@ -11,6 +11,7 @@ import authRoutes from "./routes/authRoutes";
 import ticketRoutes from "./routes/ticketRoute";
 import userRoutes from "./routes/userRoutes";
 import { socketAuth } from "./middleware/socketAuth";
+import aiRoutes from "./routes/aiRoutes";
 
 // ---------------------------------------------------
 // ENV SETUP
@@ -90,6 +91,7 @@ connectDB();
 app.use("/api/auth", authRoutes);
 app.use("/api/tickets", ticketRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/ai", aiRoutes);
 
 // ---------------------------------------------------
 // START SERVER
